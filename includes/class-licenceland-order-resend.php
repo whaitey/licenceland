@@ -15,6 +15,13 @@ if (!defined('ABSPATH')) {
 class LicenceLand_Order_Resend {
     
     public function init() {
+        // Debug: Add admin notice to confirm class is loaded
+        add_action('admin_notices', function() {
+            if (isset($_GET['page']) && $_GET['page'] === 'licenceland-settings') {
+                echo '<div class="notice notice-info"><p>Order Resend class loaded successfully!</p></div>';
+            }
+        });
+        
         // Admin hooks
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('wp_ajax_licenceland_resend_order_email', [$this, 'resend_order_email']);
