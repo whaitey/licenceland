@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.8  
+**Version:** 1.0.9  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -40,6 +40,7 @@ A comprehensive WordPress plugin that combines CD Key management and dual shop f
 - **Performance**: Optimized database queries and caching
 - **Clean Uninstall**: Complete data cleanup on plugin removal
 - **Payment-Based Orders**: Orders are only created after successful payment completion
+- **Abandoned Cart Reminders**: Automatic email reminders for abandoned shopping carts
 
 ## Requirements
 
@@ -110,6 +111,13 @@ Navigate to **LicenceLand > Settings** to configure:
 2. Enter an IP address to search
 3. View order history and shop type usage for that IP
 
+### Abandoned Cart Management
+1. Navigate to **LicenceLand > Abandoned Carts** to view all abandoned carts
+2. Configure reminder settings in **LicenceLand > Abandoned Cart Settings**
+3. Set reminder delay, maximum reminders, and customize email templates
+4. Manually send reminders or delete abandoned carts as needed
+5. System automatically tracks carts and sends reminders based on settings
+
 ## API Reference
 
 ### Hooks and Filters
@@ -176,6 +184,14 @@ licenceland_switch_shop_type($new_shop_type);
 Enable debug logging in **LicenceLand > Settings > General** to troubleshoot issues.
 
 ## Changelog
+
+### 1.0.9
+- **Added**: Abandoned Cart Reminder System
+- **Enhanced**: Automatic email notifications for abandoned shopping carts
+- **Added**: Admin interface for managing abandoned carts
+- **Added**: Customizable email templates and reminder settings
+- **Added**: Cron job scheduling for automatic reminder sending
+- **Improved**: Cart tracking and user engagement features
 
 ### 1.0.8
 - **Fixed**: Parsedown class not found error in Plugin Update Checker

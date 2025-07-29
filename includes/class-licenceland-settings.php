@@ -72,6 +72,15 @@ class LicenceLand_Settings {
         
         add_submenu_page(
             self::MENU_SLUG,
+            __('Abandoned Cart Settings', 'licenceland'),
+            __('Abandoned Cart', 'licenceland'),
+            'manage_options',
+            'licenceland-abandoned-cart-settings',
+            [$this, 'abandoned_cart_settings_page']
+        );
+        
+        add_submenu_page(
+            self::MENU_SLUG,
             __('IP Search', 'licenceland'),
             __('IP Search', 'licenceland'),
             'manage_woocommerce',
@@ -89,6 +98,11 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'licenceland_dual_shop_enabled');
         register_setting(self::OPTION_GROUP, 'licenceland_default_shop_type');
         register_setting(self::OPTION_GROUP, 'licenceland_payment_based_orders');
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_enabled');
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_reminder_delay');
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_max_reminders');
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_subject');
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_template');
         
         // CD Keys settings
         register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_default_threshold');
@@ -415,6 +429,120 @@ class LicenceLand_Settings {
             </form>
         </div>
         <?php
+    }
+    
+    /**
+     * Abandoned Cart Settings page
+     */
+    public function abandoned_cart_settings_page() {
+        ?>
+        <div class="wrap">
+            <h1><?php _e('Abandoned Cart Settings', 'licenceland'); ?></h1>
+            
+            <form method="post" action="options.php">
+                <?php
+                settings_fields(self::OPTION_GROUP);
+                do_settings_sections(self::OPTION_GROUP);
+                ?>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_abandoned_cart_enabled"><?php _e('Enable Abandoned Cart Reminders', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <input type="checkbox" id="licenceland_abandoned_cart_enabled" name="licenceland_abandoned_cart_enabled" value="yes" <?php checked(get_option('licenceland_abandoned_cart_enabled', 'yes'), 'yes'); ?>>
+                            <p class="description"><?php _e('Send reminder emails for abandoned carts', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_abandoned_cart_reminder_delay"><?php _e('Reminder Delay (hours)', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" id="licenceland_abandoned_cart_reminder_delay" name="licenceland_abandoned_cart_reminder_delay" value="<?php echo esc_attr(get_option('licenceland_abandoned_cart_reminder_delay', 24)); ?>" min="1" max="168" class="small-text">
+                            <p class="description"><?php _e('How many hours to wait before sending the first reminder (1-168 hours)', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_abandoned_cart_max_reminders"><?php _e('Maximum Reminders', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" id="licenceland_abandoned_cart_max_reminders" name="licenceland_abandoned_cart_max_reminders" value="<?php echo esc_attr(get_option('licenceland_abandoned_cart_max_reminders', 3)); ?>" min="1" max="10" class="small-text">
+                            <p class="description"><?php _e('Maximum number of reminder emails to send (1-10)', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_abandoned_cart_email_subject"><?php _e('Email Subject', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <input type="text" id="licenceland_abandoned_cart_email_subject" name="licenceland_abandoned_cart_email_subject" value="<?php echo esc_attr(get_option('licenceland_abandoned_cart_email_subject', __('You left something in your cart!', 'licenceland'))); ?>" class="regular-text">
+                            <p class="description"><?php _e('Subject line for reminder emails', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_abandoned_cart_email_template"><?php _e('Email Template', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <textarea id="licenceland_abandoned_cart_email_template" name="licenceland_abandoned_cart_email_template" rows="20" cols="80" class="large-text code"><?php echo esc_textarea(get_option('licenceland_abandoned_cart_email_template', $this->get_default_abandoned_cart_template())); ?></textarea>
+                            <p class="description">
+                                <?php _e('Email template. Use placeholders:', 'licenceland'); ?>
+                                <br><code>{customer_name}</code> - <?php _e('Customer name', 'licenceland'); ?>
+                                <br><code>{cart_items}</code> - <?php _e('Cart items table', 'licenceland'); ?>
+                                <br><code>{cart_total}</code> - <?php _e('Cart total', 'licenceland'); ?>
+                                <br><code>{checkout_url}</code> - <?php _e('Checkout URL', 'licenceland'); ?>
+                                <br><code>{shop_name}</code> - <?php _e('Shop name', 'licenceland'); ?>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <?php submit_button(); ?>
+            </form>
+        </div>
+        <?php
+    }
+    
+    private function get_default_abandoned_cart_template() {
+        return '
+        <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <h2>Hi {customer_name},</h2>
+            <p>We noticed you left some items in your cart. Don\'t miss out on these great products!</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Product</th>
+                        <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Quantity</th>
+                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {cart_items}
+                </tbody>
+                <tfoot>
+                    <tr style="background-color: #f8f9fa;">
+                        <td colspan="2" style="padding: 10px; text-align: right; border: 1px solid #ddd;"><strong>Total:</strong></td>
+                        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;"><strong>{cart_total}</strong></td>
+                        </tr>
+                </tfoot>
+            </table>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{checkout_url}" style="background-color: #007cba; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Complete Your Order</a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">
+                This email was sent from {shop_name}. If you have any questions, please contact our support team.
+            </p>
+        </div>';
     }
     
     /**

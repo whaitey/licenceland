@@ -2,7 +2,7 @@
 /**
  * Plugin Name: LicenceLand - Unified E-commerce Solution
  * Description: Comprehensive e-commerce solution featuring CD Key management, dual shop functionality (Lakossági/Üzleti), and advanced WooCommerce integration.
- * Version: 1.0.8
+ * Version: 1.0.9
  * Author: ZeusWeb
  * Text Domain: licenceland
  * Domain Path: /languages
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LICENCELAND_VERSION', '1.0.8');
+define('LICENCELAND_VERSION', '1.0.9');
 define('LICENCELAND_PLUGIN_FILE', __FILE__);
 define('LICENCELAND_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LICENCELAND_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -34,6 +34,7 @@ require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-core.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-cd-keys.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-dual-shop.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-settings.php';
+require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-abandoned-cart.php';
 
 /**
  * Main LicenceLand Plugin Class
@@ -46,6 +47,7 @@ class LicenceLand {
     public $dual_shop;
     public $settings;
     public $updater;
+    public $abandoned_cart;
     
     public static function get_instance() {
         if (null === self::$instance) {
@@ -73,6 +75,7 @@ class LicenceLand {
         $this->dual_shop = new LicenceLand_Dual_Shop();
         $this->settings = new LicenceLand_Settings();
         $this->updater = new LicenceLand_Updater();
+        $this->abandoned_cart = new LicenceLand_Abandoned_Cart();
     }
     
     public function init() {
@@ -88,6 +91,7 @@ class LicenceLand {
         $this->dual_shop->init();
         $this->settings->init();
         $this->updater->init();
+        $this->abandoned_cart->init();
     }
     
     public function load_textdomain() {
@@ -104,6 +108,7 @@ class LicenceLand {
         $this->cd_keys->activate();
         $this->dual_shop->activate();
         $this->settings->activate();
+        $this->abandoned_cart->activate();
         
         // Flush rewrite rules
         flush_rewrite_rules();

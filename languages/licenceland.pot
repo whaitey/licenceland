@@ -306,6 +306,154 @@ msgstr ""
 msgid "Payment-Based Orders:"
 msgstr ""
 
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Abandoned Cart Reminder System for LicenceLand"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Abandoned Cart Reminders"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Enable Abandoned Cart Reminders"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Send reminder emails for abandoned carts"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Reminder Delay (hours)"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "How many hours to wait before sending the first reminder"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Maximum Reminders"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Maximum number of reminder emails to send"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Email Subject"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Subject line for reminder emails"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Email Template"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Email template. Use placeholders: {customer_name}, {cart_items}, {cart_total}, {checkout_url}, {shop_name}"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Abandoned Carts"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Email"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Items"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Total"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Shop Type"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Reminders Sent"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Last Activity"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Actions"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Send Reminder"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Delete"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Send reminder email?"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Reminder sent successfully!"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Error sending reminder."
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Delete this abandoned cart?"
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "Error deleting cart."
+msgstr ""
+
+#: includes/class-licenceland-abandoned-cart.php:1
+msgid "You left something in your cart!"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Abandoned Cart Settings"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "How many hours to wait before sending the first reminder (1-168 hours)"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Maximum number of reminder emails to send (1-10)"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Customer name"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Cart items table"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Cart total"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Checkout URL"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Shop name"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:1
+msgid "Abandoned Cart"
+msgstr ""
+
 #: includes/class-licenceland-core.php:258
 msgid "Order will be created after payment is completed."
 msgstr ""

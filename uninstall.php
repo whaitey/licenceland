@@ -26,9 +26,16 @@ $options_to_delete = [
     'licenceland_default_shop_type',
     'licenceland_version',
     'licenceland_activated',
-    'licenceland_payment_based_orders',
-    
-    // CD Keys options
+            'licenceland_payment_based_orders',
+        
+        // Abandoned Cart options
+        'licenceland_abandoned_cart_enabled',
+        'licenceland_abandoned_cart_reminder_delay',
+        'licenceland_abandoned_cart_max_reminders',
+        'licenceland_abandoned_cart_email_subject',
+        'licenceland_abandoned_cart_email_template',
+        
+        // CD Keys options
     'licenceland_cd_keys_default_threshold',
     'licenceland_cd_keys_auto_assign_default',
     
@@ -58,6 +65,7 @@ global $wpdb;
 $tables_to_drop = [
     $wpdb->prefix . 'licenceland_cd_keys_usage',
     $wpdb->prefix . 'licenceland_backorders',
+    $wpdb->prefix . 'licenceland_abandoned_carts',
 ];
 
 foreach ($tables_to_drop as $table) {
