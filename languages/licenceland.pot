@@ -300,6 +300,26 @@ msgstr ""
 msgid "GitHub personal access token for private repository updates. <a href=\"https://github.com/settings/tokens\" target=\"_blank\">Get token here</a>"
 msgstr ""
 
+#: includes/class-licenceland-settings.php:235
+msgid "Payment-Based Order Creation"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:238
+msgid "Only create orders after successful payment completion. Prevents orders from being created before payment is processed."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:185
+msgid "Payment-Based Orders:"
+msgstr ""
+
+#: includes/class-licenceland-core.php:258
+msgid "Order will be created after payment is completed."
+msgstr ""
+
+#: includes/class-licenceland-core.php:350
+msgid "Order created after successful payment completion."
+msgstr ""
+
 #: includes/class-licenceland-settings.php:220
 msgid "Consumer (Lakossági)"
 msgstr ""

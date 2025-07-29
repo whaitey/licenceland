@@ -89,6 +89,7 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'licenceland_dual_shop_enabled');
         register_setting(self::OPTION_GROUP, 'licenceland_default_shop_type');
         register_setting(self::OPTION_GROUP, 'licenceland_github_token');
+        register_setting(self::OPTION_GROUP, 'licenceland_payment_based_orders');
         
         // CD Keys settings
         register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_default_threshold');
@@ -188,6 +189,10 @@ class LicenceLand_Settings {
                             <td><?php _e('Dual Shop Feature:', 'licenceland'); ?></td>
                             <td><?php echo LicenceLand_Core::is_feature_enabled('dual_shop') ? '<span class="status-ok">✓ Enabled</span>' : '<span class="status-warning">⚠ Disabled</span>'; ?></td>
                         </tr>
+                        <tr>
+                            <td><?php _e('Payment-Based Orders:', 'licenceland'); ?></td>
+                            <td><?php echo get_option('licenceland_payment_based_orders', 'yes') === 'yes' ? '<span class="status-ok">✓ Enabled</span>' : '<span class="status-warning">⚠ Disabled</span>'; ?></td>
+                        </tr>
                     </table>
                 </div>
             </div>
@@ -234,6 +239,15 @@ class LicenceLand_Settings {
                         <td>
                             <input type="password" id="licenceland_github_token" name="licenceland_github_token" value="<?php echo esc_attr(get_option('licenceland_github_token', '')); ?>" class="regular-text">
                             <p class="description"><?php _e('GitHub personal access token for private repository updates. <a href="https://github.com/settings/tokens" target="_blank">Get token here</a>', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_payment_based_orders"><?php _e('Payment-Based Order Creation', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <input type="checkbox" id="licenceland_payment_based_orders" name="licenceland_payment_based_orders" value="yes" <?php checked(get_option('licenceland_payment_based_orders', 'yes'), 'yes'); ?>>
+                            <p class="description"><?php _e('Only create orders after successful payment completion. Prevents orders from being created before payment is processed.', 'licenceland'); ?></p>
                         </td>
                     </tr>
                 </table>

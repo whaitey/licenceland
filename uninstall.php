@@ -27,6 +27,7 @@ $options_to_delete = [
     'licenceland_version',
     'licenceland_activated',
     'licenceland_github_token',
+    'licenceland_payment_based_orders',
     
     // CD Keys options
     'licenceland_cd_keys_default_threshold',
@@ -75,6 +76,9 @@ $meta_keys_to_delete = [
     '_ds_business_price',
     '_backorder_enabled',
     '_backorder_notification_sent',
+    '_licenceland_actual_order_id',
+    '_licenceland_order_creation_method',
+    '_licenceland_checkout_data_stored',
 ];
 
 foreach ($meta_keys_to_delete as $meta_key) {

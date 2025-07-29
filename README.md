@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.4  
+**Version:** 1.0.6  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -39,6 +39,7 @@ A comprehensive WordPress plugin that combines CD Key management and dual shop f
 - **Security**: Nonce verification, input sanitization, and data validation
 - **Performance**: Optimized database queries and caching
 - **Clean Uninstall**: Complete data cleanup on plugin removal
+- **Payment-Based Orders**: Orders are only created after successful payment completion
 
 ## Requirements
 
@@ -175,6 +176,27 @@ licenceland_switch_shop_type($new_shop_type);
 Enable debug logging in **LicenceLand > Settings > General** to troubleshoot issues.
 
 ## Changelog
+
+### 1.0.6
+- **Added**: Payment-based order creation - orders are only created after successful payment
+- **Enhanced**: Security by preventing orders from being created before payment completion
+- **Improved**: Order management with better payment flow integration
+
+### 1.0.5
+- **Added**: GitHub token support for private repository updates
+- **Enhanced**: Update checker reliability and security
+- **Improved**: Repository visibility management
+
+### 1.0.4
+- **Added**: GitHub token support for private repository updates
+- **Enhanced**: Update checker reliability and security
+- **Improved**: Repository visibility management
+
+### 1.0.3
+- **Added**: Backorder system for CD keys
+- **Enhanced**: Automatic backorder processing when stock is replenished
+- **Added**: Manual backorder management in admin interface
+- **Improved**: Email notifications for backorders
 
 ### 1.0.2
 - **Added**: Official Plugin Update Checker library integration

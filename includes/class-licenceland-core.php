@@ -19,6 +19,9 @@ class LicenceLand_Core {
         add_action('wp_enqueue_scripts', [$this, 'frontend_scripts']);
         add_action('admin_notices', [$this, 'admin_notices']);
         add_filter('plugin_action_links_' . LICENCELAND_PLUGIN_BASENAME, [$this, 'plugin_action_links']);
+        
+        // Handle payment-based order creation
+        $this->handle_payment_based_order_creation();
     }
     
     public function activate() {
@@ -156,6 +159,11 @@ class LicenceLand_Core {
         if (!get_option('licenceland_default_shop_type')) {
             update_option('licenceland_default_shop_type', 'lakossagi');
         }
+        
+        // Payment-based order creation defaults
+        if (!get_option('licenceland_payment_based_orders')) {
+            update_option('licenceland_payment_based_orders', 'yes');
+        }
     }
     
     private function create_tables() {
@@ -215,6 +223,177 @@ class LicenceLand_Core {
     public static function log($message, $level = 'info') {
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log(sprintf('[LicenceLand %s] %s: %s', LICENCELAND_VERSION, strtoupper($level), $message));
+        }
+    }
+    
+    /**
+     * Handle order creation only after successful payment
+     * Prevents orders from being created before payment is completed
+     */
+    public function handle_payment_based_order_creation() {
+        // Hook into order creation process
+        add_action('woocommerce_checkout_create_order', [$this, 'prevent_order_creation_before_payment'], 5, 2);
+        add_action('woocommerce_payment_complete', [$this, 'create_order_after_payment'], 10, 1);
+        add_action('woocommerce_checkout_order_processed', [$this, 'handle_order_processed'], 10, 3);
+        
+        // Store checkout data in session for later use
+        add_action('woocommerce_checkout_update_order_meta', [$this, 'store_checkout_data'], 10, 2);
+        
+        // Handle failed payments
+        add_action('woocommerce_payment_complete_failed', [$this, 'handle_failed_payment'], 10, 1);
+    }
+    
+    /**
+     * Prevent order creation before payment is completed
+     */
+    public function prevent_order_creation_before_payment($order, $data) {
+        // Check if payment-based order creation is enabled
+        if (!get_option('licenceland_payment_based_orders', 'yes') === 'yes') {
+            return;
+        }
+        
+        // Store checkout data in session for later use
+        WC()->session->set('licenceland_checkout_data', [
+            'billing' => $data['billing'] ?? [],
+            'shipping' => $data['shipping'] ?? [],
+            'order_data' => $data,
+            'cart_items' => WC()->cart->get_cart(),
+            'cart_totals' => [
+                'subtotal' => WC()->cart->get_subtotal(),
+                'total' => WC()->cart->get_total('raw'),
+                'tax_total' => WC()->cart->get_tax_total(),
+                'shipping_total' => WC()->cart->get_shipping_total(),
+                'discount_total' => WC()->cart->get_discount_total()
+            ]
+        ]);
+        
+        // Prevent the order from being created now
+        throw new Exception(__('Order will be created after payment is completed.', 'licenceland'));
+    }
+    
+    /**
+     * Create order after successful payment
+     */
+    public function create_order_after_payment($order_id) {
+        // Check if payment-based order creation is enabled
+        if (!get_option('licenceland_payment_based_orders', 'yes') === 'yes') {
+            return;
+        }
+        
+        $checkout_data = WC()->session->get('licenceland_checkout_data');
+        if (!$checkout_data) {
+            self::log('No checkout data found for order creation after payment', 'error');
+            return;
+        }
+        
+        try {
+            // Create the order with stored checkout data
+            $order = $this->create_order_from_checkout_data($checkout_data);
+            
+            if ($order) {
+                // Update the payment order with the new order ID
+                $payment_order = wc_get_order($order_id);
+                if ($payment_order) {
+                    $payment_order->update_meta_data('_licenceland_actual_order_id', $order->get_id());
+                    $payment_order->save();
+                }
+                
+                // Clear the stored checkout data
+                WC()->session->__unset('licenceland_checkout_data');
+                
+                self::log('Order created successfully after payment: ' . $order->get_id(), 'info');
+            }
+        } catch (Exception $e) {
+            self::log('Failed to create order after payment: ' . $e->getMessage(), 'error');
+        }
+    }
+    
+    /**
+     * Create order from stored checkout data
+     */
+    private function create_order_from_checkout_data($checkout_data) {
+        // Create new order
+        $order = wc_create_order();
+        
+        // Add cart items
+        foreach ($checkout_data['cart_items'] as $cart_item_key => $cart_item) {
+            $product_id = $cart_item['product_id'];
+            $variation_id = $cart_item['variation_id'] ?? 0;
+            $quantity = $cart_item['quantity'];
+            
+            $order->add_product(
+                wc_get_product($product_id),
+                $quantity,
+                [
+                    'variation_id' => $variation_id,
+                    'variation' => $cart_item['variation'] ?? []
+                ]
+            );
+        }
+        
+        // Set billing address
+        if (!empty($checkout_data['billing'])) {
+            $order->set_address($checkout_data['billing'], 'billing');
+        }
+        
+        // Set shipping address
+        if (!empty($checkout_data['shipping'])) {
+            $order->set_address($checkout_data['shipping'], 'shipping');
+        }
+        
+        // Set order totals
+        $order->set_subtotal($checkout_data['cart_totals']['subtotal']);
+        $order->set_total($checkout_data['cart_totals']['total']);
+        $order->set_tax_total($checkout_data['cart_totals']['tax_total']);
+        $order->set_shipping_total($checkout_data['cart_totals']['shipping_total']);
+        $order->set_discount_total($checkout_data['cart_totals']['discount_total']);
+        
+        // Set order status to processing (payment completed)
+        $order->set_status('processing');
+        
+        // Add order note
+        $order->add_order_note(__('Order created after successful payment completion.', 'licenceland'));
+        
+        // Save the order
+        $order->save();
+        
+        return $order;
+    }
+    
+    /**
+     * Handle order processed (fallback for normal flow)
+     */
+    public function handle_order_processed($order_id, $posted_data, $order) {
+        // This is a fallback for when payment-based order creation is disabled
+        if (get_option('licenceland_payment_based_orders', 'yes') !== 'yes') {
+            return;
+        }
+        
+        // Add meta to indicate this order was created normally
+        $order->update_meta_data('_licenceland_order_creation_method', 'normal');
+        $order->save();
+    }
+    
+    /**
+     * Handle failed payment
+     */
+    public function handle_failed_payment($order_id) {
+        // Clear stored checkout data on failed payment
+        WC()->session->__unset('licenceland_checkout_data');
+        
+        self::log('Payment failed, checkout data cleared for order: ' . $order_id, 'info');
+    }
+    
+    /**
+     * Store checkout data for later use
+     */
+    public function store_checkout_data($order_id, $posted_data) {
+        // This method is called when order is created normally
+        // We store additional data that might be needed
+        $order = wc_get_order($order_id);
+        if ($order) {
+            $order->update_meta_data('_licenceland_checkout_data_stored', current_time('mysql'));
+            $order->save();
         }
     }
 }
