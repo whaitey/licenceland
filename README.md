@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.7  
+**Version:** 1.0.8  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -176,6 +176,11 @@ licenceland_switch_shop_type($new_shop_type);
 Enable debug logging in **LicenceLand > Settings > General** to troubleshoot issues.
 
 ## Changelog
+
+### 1.0.8
+- **Fixed**: Parsedown class not found error in Plugin Update Checker
+- **Enhanced**: Manual loading of Parsedown dependency for release notes parsing
+- **Improved**: Update checker reliability and error handling
 
 ### 1.0.7
 - **Removed**: GitHub token functionality - no longer needed for public repository
