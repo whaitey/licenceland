@@ -33,7 +33,8 @@ class LicenceLand_Updater {
         $this->update_checker->setBranch('main');
         
         // Optional: Set the GitHub access token for private repositories
-        // $this->update_checker->setAuthentication('your-github-token');
+        // Uncomment and add your GitHub token if the repository is private
+        // $this->update_checker->setAuthentication('your-github-token-here');
         
         // Optional: Add custom filters for the update info
         add_filter('puc_pre_inject_update-' . $this->update_checker->getUniqueName('puc'), [$this, 'inject_update_info'], 10, 2);
