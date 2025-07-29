@@ -15,11 +15,6 @@ if (!defined('ABSPATH')) {
 // Include the Plugin Update Checker library
 require_once LICENCELAND_PLUGIN_DIR . 'includes/plugin-update-checker/load-v5p6.php';
 
-// Ensure Parsedown is loaded (required for release notes parsing)
-if (!class_exists('Parsedown', false)) {
-    require_once __DIR__ . '/plugin-update-checker/vendor/Parsedown.php';
-}
-
 use YahnisElsts\PluginUpdateChecker\v5p6\PucFactory;
 
 class LicenceLand_Updater {
