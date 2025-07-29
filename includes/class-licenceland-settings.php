@@ -88,7 +88,6 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_enabled');
         register_setting(self::OPTION_GROUP, 'licenceland_dual_shop_enabled');
         register_setting(self::OPTION_GROUP, 'licenceland_default_shop_type');
-        register_setting(self::OPTION_GROUP, 'licenceland_github_token');
         register_setting(self::OPTION_GROUP, 'licenceland_payment_based_orders');
         
         // CD Keys settings
@@ -230,15 +229,6 @@ class LicenceLand_Settings {
                                 <option value="uzleti" <?php selected(get_option('licenceland_default_shop_type', 'lakossagi'), 'uzleti'); ?>><?php _e('Business (Üzleti)', 'licenceland'); ?></option>
                             </select>
                             <p class="description"><?php _e('Default shop type for new visitors.', 'licenceland'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="licenceland_github_token"><?php _e('GitHub Token', 'licenceland'); ?></label>
-                        </th>
-                        <td>
-                            <input type="password" id="licenceland_github_token" name="licenceland_github_token" value="<?php echo esc_attr(get_option('licenceland_github_token', '')); ?>" class="regular-text">
-                            <p class="description"><?php _e('GitHub personal access token for private repository updates. <a href="https://github.com/settings/tokens" target="_blank">Get token here</a>', 'licenceland'); ?></p>
                         </td>
                     </tr>
                     <tr>

@@ -292,13 +292,7 @@ msgstr ""
 msgid "Business Footer"
 msgstr ""
 
-#: includes/class-licenceland-settings.php:225
-msgid "GitHub Token"
-msgstr ""
 
-#: includes/class-licenceland-settings.php:228
-msgid "GitHub personal access token for private repository updates. <a href=\"https://github.com/settings/tokens\" target=\"_blank\">Get token here</a>"
-msgstr ""
 
 #: includes/class-licenceland-settings.php:235
 msgid "Payment-Based Order Creation"

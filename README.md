@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.6  
+**Version:** 1.0.7  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -176,6 +176,11 @@ licenceland_switch_shop_type($new_shop_type);
 Enable debug logging in **LicenceLand > Settings > General** to troubleshoot issues.
 
 ## Changelog
+
+### 1.0.7
+- **Removed**: GitHub token functionality - no longer needed for public repository
+- **Simplified**: Update checker configuration for public repository access
+- **Cleaned**: Removed unnecessary authentication code and settings
 
 ### 1.0.6
 - **Added**: Payment-based order creation - orders are only created after successful payment

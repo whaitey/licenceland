@@ -26,7 +26,6 @@ $options_to_delete = [
     'licenceland_default_shop_type',
     'licenceland_version',
     'licenceland_activated',
-    'licenceland_github_token',
     'licenceland_payment_based_orders',
     
     // CD Keys options
