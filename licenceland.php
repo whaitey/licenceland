@@ -2,7 +2,7 @@
 /**
  * Plugin Name: LicenceLand - Unified E-commerce Solution
  * Description: Comprehensive e-commerce solution featuring CD Key management, dual shop functionality (Lakossági/Üzleti), and advanced WooCommerce integration.
- * Version: 1.0.13
+ * Version: 1.0.14
  * Author: ZeusWeb
  * Text Domain: licenceland
  * Domain Path: /languages
@@ -20,14 +20,21 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LICENCELAND_VERSION', '1.0.13');
+define('LICENCELAND_VERSION', '1.0.14');
 define('LICENCELAND_PLUGIN_FILE', __FILE__);
 define('LICENCELAND_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LICENCELAND_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('LICENCELAND_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
-// GitHub Update Checker
-require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-updater.php';
+// Plugin Update Checker
+require_once __DIR__ . '/load-v5p6.php';
+use YahnisElsts\PluginUpdateChecker\v5p6\PucFactory;
+
+$licencelandUpdateChecker = PucFactory::buildUpdateChecker(
+    'https://github.com/whaitey/licenceland',
+    __FILE__,
+    'licenceland'
+);
 
 // Core classes
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-core.php';
@@ -47,7 +54,6 @@ class LicenceLand {
     public $cd_keys;
     public $dual_shop;
     public $settings;
-    public $updater;
     public $abandoned_cart;
     public $order_resend;
     
@@ -76,7 +82,6 @@ class LicenceLand {
         $this->cd_keys = new LicenceLand_CD_Keys();
         $this->dual_shop = new LicenceLand_Dual_Shop();
         $this->settings = new LicenceLand_Settings();
-        $this->updater = new LicenceLand_Updater();
         $this->abandoned_cart = new LicenceLand_Abandoned_Cart();
         $this->order_resend = new LicenceLand_Order_Resend();
     }
@@ -93,7 +98,6 @@ class LicenceLand {
         $this->cd_keys->init();
         $this->dual_shop->init();
         $this->settings->init();
-        $this->updater->init();
         $this->abandoned_cart->init();
         $this->order_resend->init();
     }

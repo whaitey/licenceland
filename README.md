@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.13  
+**Version:** 1.0.14  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -191,6 +191,12 @@ licenceland_switch_shop_type($new_shop_type);
 Enable debug logging in **LicenceLand > Settings > General** to troubleshoot issues.
 
 ## Changelog
+
+### 1.0.14
+- **Refactored**: Plugin Update Checker to match bf-events project structure
+- **Simplified**: Update checker implementation - removed separate class
+- **Improved**: Direct integration in main plugin file
+- **Enhanced**: Better compatibility and reliability
 
 ### 1.0.13
 - **Fixed**: Parsedown loading issue in Plugin Update Checker (final fix)
