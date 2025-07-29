@@ -454,6 +454,146 @@ msgstr ""
 msgid "Abandoned Cart"
 msgstr ""
 
+#: includes/class-licenceland-order-resend.php:1
+msgid "Order Resend System for LicenceLand"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Order Resend"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Resend Order Email"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Order ID"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Select an order..."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Email Type"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Select email type..."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "New Order"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Processing Order"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Completed Order"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Customer Invoice"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Customer Note"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Resend Email"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Recent Resend History"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Resend Order"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Resend Invoice"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Resend Order Email"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Resend Invoice"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Order not found."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "No customer email found for this order."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Invalid email type."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Email sent successfully to %s."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Failed to send email."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "No recent resend history."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Order"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Customer Email"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Sent By"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Date"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Are you sure you want to resend this email?"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Sending..."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Error sending email."
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "Resend"
+msgstr ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "%d email sent successfully."
+msgid_plural "%d emails sent successfully."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-licenceland-order-resend.php:1
+msgid "%d email failed to send."
+msgid_plural "%d emails failed to send."
+msgstr[0] ""
+msgstr[1] ""
+
 #: includes/class-licenceland-core.php:258
 msgid "Order will be created after payment is completed."
 msgstr ""

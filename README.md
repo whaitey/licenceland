@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.9  
+**Version:** 1.0.10  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -111,6 +111,13 @@ Navigate to **LicenceLand > Settings** to configure:
 2. Enter an IP address to search
 3. View order history and shop type usage for that IP
 
+### Order Resend Management
+1. Navigate to **LicenceLand > Order Resend** to access the resend interface
+2. Select an order and email type to resend
+3. Use bulk actions on the orders page to resend multiple orders
+4. View resend history and track all sent emails
+5. Quick resend buttons are available on individual order pages
+
 ### Abandoned Cart Management
 1. Navigate to **LicenceLand > Abandoned Carts** to view all abandoned carts
 2. Configure reminder settings in **LicenceLand > Abandoned Cart Settings**
@@ -184,6 +191,14 @@ licenceland_switch_shop_type($new_shop_type);
 Enable debug logging in **LicenceLand > Settings > General** to troubleshoot issues.
 
 ## Changelog
+
+### 1.0.10
+- **Added**: Order Resend System
+- **Enhanced**: Ability to resend order emails and invoices to customers
+- **Added**: Admin interface for order resend management
+- **Added**: Bulk actions for resending multiple orders
+- **Added**: Resend history tracking and logging
+- **Added**: Quick resend buttons on order pages
 
 ### 1.0.9
 - **Added**: Abandoned Cart Reminder System
