@@ -24,7 +24,7 @@ class LicenceLand_Updater {
     public function init() {
         // Initialize the Plugin Update Checker
         $this->update_checker = PucFactory::buildUpdateChecker(
-            'https://github.com/zeusweb/licenceland', // GitHub repository URL
+            'https://github.com/whaitey/licenceland', // GitHub repository URL
             LICENCELAND_PLUGIN_FILE, // Plugin file path
             'licenceland' // Plugin slug
         );

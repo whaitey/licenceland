@@ -56,7 +56,7 @@ A comprehensive WordPress plugin that combines CD Key management and dual shop f
 4. Configure settings in **LicenceLand > Settings**
 
 ### Method 2: GitHub Installation
-1. Clone the repository: `git clone https://github.com/zeusweb/licenceland.git`
+1. Clone the repository: `git clone https://github.com/whaitey/licenceland.git`
 2. Upload to `/wp-content/plugins/licenceland/`
 3. Activate the plugin through WordPress admin
 4. Updates will be available automatically through WordPress admin
@@ -194,9 +194,8 @@ Enable debug logging in **LicenceLand > Settings > General** to troubleshoot iss
 
 ## Support
 
-For support and feature requests:
-- **GitHub Issues**: [Create an issue](https://github.com/zeusweb/licenceland/issues)
-- **Documentation**: [View documentation](https://github.com/zeusweb/licenceland/wiki)
+- **GitHub Issues**: [Create an issue](https://github.com/whaitey/licenceland/issues)
+- **Documentation**: [View documentation](https://github.com/whaitey/licenceland/wiki)
 - **Contact**: Reach out to ZeusWeb for custom development
 
 ## Contributing

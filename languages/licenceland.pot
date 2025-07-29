@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: LicenceLand 1.0.1\n"
-"Report-Msgid-Bugs-To: https://github.com/zeusweb/licenceland/issues\n"
+"Report-Msgid-Bugs-To: https://github.com/whaitey/licenceland/issues\n"
 "POT-Creation-Date: 2024-01-01 12:00+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"

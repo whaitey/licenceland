@@ -103,7 +103,7 @@ class LicenceLand_Core {
                     printf(
                         __('LicenceLand has been activated successfully! <a href="%s">Configure the plugin</a> or <a href="%s">view documentation</a>.', 'licenceland'),
                         admin_url('admin.php?page=licenceland-settings'),
-                        'https://github.com/zeusweb/licenceland'
+                        'https://github.com/whaitey/licenceland'
                     ); 
                     ?>
                 </p>
@@ -192,8 +192,8 @@ class LicenceLand_Core {
             'version' => LICENCELAND_VERSION,
             'author' => 'ZeusWeb',
             'description' => __('Unified e-commerce solution with CD Key management and dual shop functionality.', 'licenceland'),
-            'url' => 'https://github.com/zeusweb/licenceland',
-            'support' => 'https://github.com/zeusweb/licenceland/issues'
+            'url' => 'https://github.com/whaitey/licenceland',
+            'support' => 'https://github.com/whaitey/licenceland/issues'
         ];
     }
     
