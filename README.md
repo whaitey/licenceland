@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.11  
+**Version:** 1.0.12  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -191,6 +191,12 @@ licenceland_switch_shop_type($new_shop_type);
 Enable debug logging in **LicenceLand > Settings > General** to troubleshoot issues.
 
 ## Changelog
+
+### 1.0.12
+- **Fixed**: Order Resend System email sending functionality
+- **Enhanced**: Improved WooCommerce email integration
+- **Added**: Debug logging for order resend attempts
+- **Improved**: Email object detection and creation
 
 ### 1.0.11
 - **Fixed**: Parsedown loading issue in Plugin Update Checker

@@ -393,11 +393,20 @@ class LicenceLand_Order_Resend {
         // Get WooCommerce mailer
         $mailer = WC()->mailer();
         
-        // Get the email object
-        $email = $mailer->get_emails()[$email_type] ?? null;
+        // Get the email object from mailer
+        $emails = $mailer->get_emails();
+        $email = null;
         
-        if (!$email) {
-            // Try to create the email object
+        // Try to find the email by type
+        foreach ($emails as $email_obj) {
+            if ($email_obj->id === $email_type) {
+                $email = $email_obj;
+                break;
+            }
+        }
+        
+        // If not found, try to create it
+        if (!$email && class_exists($email_class)) {
             $email = new $email_class();
         }
         
@@ -413,6 +422,9 @@ class LicenceLand_Order_Resend {
         
         // Restore locale
         $email->restore_locale();
+        
+        // Debug: Log the attempt
+        LicenceLand_Core::log("Order resend attempt: Order #{$order->get_id()}, Email type: {$email_type}, Sent: " . ($sent ? 'Yes' : 'No'));
         
         return $sent;
     }
