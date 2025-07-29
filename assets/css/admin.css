@@ -1,0 +1,292 @@
+/**
+ * LicenceLand Admin Styles
+ * 
+ * @package LicenceLand
+ * @since 1.0.0
+ */
+
+.licenceland-dashboard {
+    margin: 20px 0;
+}
+
+.licenceland-welcome {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.licenceland-welcome h2 {
+    margin-top: 0;
+    color: #23282d;
+}
+
+.licenceland-status {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+}
+
+.licenceland-status h3 {
+    margin-top: 0;
+    color: #23282d;
+}
+
+.status-ok {
+    color: #46b450;
+    font-weight: 600;
+}
+
+.status-warning {
+    color: #ffb900;
+    font-weight: 600;
+}
+
+.status-error {
+    color: #dc3232;
+    font-weight: 600;
+}
+
+/* CD Keys Admin Styles */
+.cd-keys-panel {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+.cd-keys-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+.cd-key-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.cd-key-item:last-child {
+    border-bottom: none;
+}
+
+.cd-key-text {
+    font-family: monospace;
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+}
+
+.cd-key-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.cd-key-actions button {
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+/* Dual Shop Admin Styles */
+.shop-type-indicator {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.shop-type-lakossagi {
+    background: #e7f5ff;
+    color: #0066cc;
+}
+
+.shop-type-uzleti {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+/* Settings Page Styles */
+.licenceland-settings-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.licenceland-settings-section h2 {
+    margin-top: 0;
+    color: #23282d;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.licenceland-settings-section h3 {
+    color: #23282d;
+    margin-top: 30px;
+}
+
+/* Form Enhancements */
+.licenceland-form-table th {
+    width: 200px;
+}
+
+.licenceland-form-table td {
+    padding: 15px 10px;
+}
+
+.licenceland-form-table input[type="text"],
+.licenceland-form-table input[type="number"],
+.licenceland-form-table select,
+.licenceland-form-table textarea {
+    width: 100%;
+    max-width: 400px;
+}
+
+.licenceland-form-table textarea {
+    min-height: 100px;
+}
+
+/* Payment Methods Table */
+.payment-methods-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+.payment-methods-table th,
+.payment-methods-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.payment-methods-table th {
+    background: #f9f9f9;
+    font-weight: 600;
+}
+
+.payment-methods-table input[type="checkbox"] {
+    margin: 0;
+}
+
+/* IP Search Styles */
+.ip-search-form {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.ip-search-results {
+    margin-top: 20px;
+}
+
+.ip-search-results table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ip-search-results th,
+.ip-search-results td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.ip-search-results th {
+    background: #f9f9f9;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 782px) {
+    .licenceland-form-table th {
+        width: auto;
+        display: block;
+        padding-bottom: 5px;
+    }
+    
+    .licenceland-form-table td {
+        display: block;
+        padding-left: 0;
+    }
+    
+    .payment-methods-table {
+        font-size: 12px;
+    }
+    
+    .payment-methods-table th,
+    .payment-methods-table td {
+        padding: 5px;
+    }
+}
+
+/* Loading States */
+.licenceland-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.licenceland-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Notices */
+.licenceland-notice {
+    padding: 10px 15px;
+    margin: 10px 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.licenceland-notice-success {
+    background: #f0f8f0;
+    border-color: #46b450;
+    color: #155724;
+}
+
+.licenceland-notice-error {
+    background: #fef7f7;
+    border-color: #dc3232;
+    color: #721c24;
+}
+
+.licenceland-notice-warning {
+    background: #fffbf0;
+    border-color: #ffb900;
+    color: #856404;
+}
+
+.licenceland-notice-info {
+    background: #f0f8ff;
+    border-color: #0073aa;
+    color: #004085;
+}

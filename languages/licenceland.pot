@@ -1,0 +1,477 @@
+# Copyright (C) 2024 ZeusWeb
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: LicenceLand 1.0.1\n"
+"Report-Msgid-Bugs-To: https://github.com/zeusweb/licenceland/issues\n"
+"POT-Creation-Date: 2024-01-01 12:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2024-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+
+#: licenceland.php:89
+msgid "LicenceLand requires WooCommerce to be installed and activated."
+msgstr ""
+
+#: includes/class-licenceland-core.php:89
+msgid "LicenceLand has been activated successfully! <a href=\"%s\">Configure the plugin</a> or <a href=\"%s\">view documentation</a>."
+msgstr ""
+
+#: includes/class-licenceland-core.php:97
+msgid "LicenceLand requires WooCommerce to function properly. Please <a href=\"%s\">install and activate WooCommerce</a>."
+msgstr ""
+
+#: includes/class-licenceland-core.php:108
+msgid "Settings"
+msgstr ""
+
+#: includes/class-licenceland-core.php:140
+msgid "Unified e-commerce solution with CD Key management and dual shop functionality."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:35
+msgid "CD Keys"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:40
+msgid "Email Template"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:65
+msgid "Enter one CD key per line."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:75
+msgid "Stock Alert Threshold"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:76
+msgid "Send email alert when stock falls below this number."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:85
+msgid "Auto-assign to Pending Orders"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:86
+msgid "Automatically assign new CD keys to pending orders when added."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:95
+msgid "Email Template"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:100
+msgid "Use {cd_key} placeholder for the CD key. Leave empty for default template."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:180
+msgid "Stock Alert: %s"
+msgstr ""
+
+#: includes/class-liceland-cd-keys.php:182
+msgid "The stock for product \"%s\" has fallen to %d items!"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:195
+msgid "CD Key:"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:220
+msgid "Your CD key: %s"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:225
+msgid "CD Key for Order #%s"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:280
+msgid "Insufficient permissions"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:300
+msgid "Added %d new CD keys"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:320
+msgid "CD key deleted successfully"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:75
+msgid "Shop Availability"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:85
+msgid "Available in Consumer Shop"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:90
+msgid "Available in Business Shop"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:130
+msgid "This product is not available in the current shop."
+msgstr ""
+
+#: includes/class-liceland-dual-shop.php:150
+msgid "A product has been removed because it is not available in the current shop."
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:165
+msgid "Business Price"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:166
+msgid "Product price for business shop."
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:240
+msgid "Shop Type"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:245
+msgid "Invoice Number"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:255
+msgid "Business"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:255
+msgid "Consumer"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:270
+msgid "Invoice Number"
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:350
+msgid "Orders are not allowed from this IP address."
+msgstr ""
+
+#: includes/class-licenceland-dual-shop.php:365
+msgid "Sorry, this email address cannot be used for purchases."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:45
+msgid "LicenceLand Settings"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:46
+msgid "LicenceLand"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:55
+msgid "General Settings"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:56
+msgid "General"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:65
+msgid "CD Keys Settings"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:66
+msgid "CD Keys"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:75
+msgid "Dual Shop Settings"
+msgstr ""
+
+#: includes/class-liceland-settings.php:76
+msgid "Dual Shop"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:85
+msgid "IP Search"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:130
+msgid "Welcome to LicenceLand"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:131
+msgid "Comprehensive e-commerce solution featuring CD Key management, dual shop functionality, and advanced WooCommerce integration."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:135
+msgid "System Status"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:139
+msgid "Plugin Version:"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:142
+msgid "WooCommerce:"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:145
+msgid "CD Keys Feature:"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:148
+msgid "Dual Shop Feature:"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:155
+msgid "Enable CD Keys"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:157
+msgid "Enable CD Key management functionality."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:162
+msgid "Enable Dual Shop"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:164
+msgid "Enable dual shop functionality (Consumer/Business)."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:169
+msgid "Default Shop Type"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:172
+msgid "Consumer Shop"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:173
+msgid "Business Shop"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:175
+msgid "Default shop type for new visitors."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:185
+msgid "CD Keys Configuration"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:190
+msgid "Default Stock Alert Threshold"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:192
+msgid "Default threshold for stock alerts when creating new products."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:197
+msgid "Default Auto-assign Setting"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:199
+msgid "Default setting for auto-assigning CD keys to pending orders."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:210
+msgid "Header/Footer Configuration"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:215
+msgid "Consumer Header"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:216
+msgid "Consumer Footer"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:217
+msgid "Business Header"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:218
+msgid "Business Footer"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:225
+msgid "— Select —"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:235
+msgid "Product Page Templates"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:238
+msgid "Consumer Product Template"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:247
+msgid "Business Product Template"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:260
+msgid "Payment Methods"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:262
+msgid "Payment Method"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:263
+msgid "Consumer"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:264
+msgid "Business"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:275
+msgid "Banned IP Addresses"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:278
+msgid "Banned IPs"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:280
+msgid "Enter one IP address per line (e.g., 1.2.3.4 or CIDR notation)."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:285
+msgid "Banned Email Addresses"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:288
+msgid "Banned Emails"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:290
+msgid "Enter one email address per line."
+msgstr ""
+
+#: includes/class-licenceland-settings.php:300
+msgid "WooCommerce Order Search by IP Address"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:304
+msgid "e.g., 192.168.0.1"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:305
+msgid "Search"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:320
+msgid "Results:"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:323
+msgid "Order"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:324
+msgid "Date"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:325
+msgid "Customer"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:326
+msgid "IP Address"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:327
+msgid "Status"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:340
+msgid "No results found for this IP address."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:45
+msgid "Backorders"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:350
+msgid "Pending Backorders"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:352
+msgid "Order"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:353
+msgid "Customer"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:354
+msgid "Quantity"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:355
+msgid "Date"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:356
+msgid "Status"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:357
+msgid "Action"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:365
+msgid "Process"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:367
+msgid "Processed"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:372
+msgid "No backorders for this product."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:380
+msgid "CD Key backorder created for product #%d. Quantity: %d. Will be processed when stock is available."
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:420
+msgid "Backorder Notification - Order #%s"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:422
+msgid "Dear %s,
+
+Your order #%s contains a product that is currently out of stock.
+
+Product: %s
+Quantity: %d
+
+We will automatically send you the CD key(s) as soon as they become available.
+
+Thank you for your patience!
+
+Best regards,
+%s"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:520
+msgid "CD Key backorder processed and sent to customer. Keys: %s"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:540
+msgid "Backorder not found or already processed"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:545
+msgid "No CD keys available for this product"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:555
+msgid "Not enough CD keys available"
+msgstr ""
+
+#: includes/class-licenceland-cd-keys.php:565
+msgid "Backorder processed successfully"
+msgstr ""

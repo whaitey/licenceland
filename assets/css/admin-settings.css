@@ -1,0 +1,50 @@
+/* Backorder Management Styles */
+.backorder-status-pending {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+.backorder-status-processed {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.backorder-status-cancelled {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.process-backorder {
+    background-color: #27ae60 !important;
+    border-color: #27ae60 !important;
+    color: white !important;
+}
+
+.process-backorder:hover {
+    background-color: #229954 !important;
+    border-color: #229954 !important;
+}
+
+.process-backorder:disabled {
+    background-color: #95a5a6 !important;
+    border-color: #95a5a6 !important;
+    cursor: not-allowed;
+}
+
+/* Backorder table styles */
+#backorders_data table {
+    margin-top: 10px;
+}
+
+#backorders_data th {
+    font-weight: bold;
+    background-color: #f8f9fa;
+}
+
+#backorders_data td {
+    vertical-align: middle;
+}
+
+#backorders_data .button {
+    margin: 0;
+}
