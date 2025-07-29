@@ -1,6 +1,6 @@
 # LicenceLand - Unified E-commerce Solution
 
-**Version:** 1.0.3  
+**Version:** 1.0.4  
 **Author:** ZeusWeb  
 **Requires:** WordPress 5.0+, WooCommerce 5.0+, PHP 7.4+
 
@@ -68,6 +68,7 @@ Navigate to **LicenceLand > Settings** to configure:
 
 - **Plugin Status**: Enable/disable individual features
 - **Update Settings**: Configure GitHub update preferences
+- **GitHub Token**: Set personal access token for private repository updates
 - **Logging**: Enable/disable debug logging
 
 ### CD Key Settings

@@ -32,9 +32,12 @@ class LicenceLand_Updater {
         // Set the branch that contains the stable release
         $this->update_checker->setBranch('main');
         
-        // Optional: Set the GitHub access token for private repositories
-        // Uncomment and add your GitHub token if the repository is private
-        // $this->update_checker->setAuthentication('your-github-token-here');
+        // Set GitHub authentication for private repository
+        // You can get a token from: https://github.com/settings/tokens
+        $github_token = get_option('licenceland_github_token', '');
+        if (!empty($github_token)) {
+            $this->update_checker->setAuthentication($github_token);
+        }
         
         // Optional: Add custom filters for the update info
         add_filter('puc_pre_inject_update-' . $this->update_checker->getUniqueName('puc'), [$this, 'inject_update_info'], 10, 2);

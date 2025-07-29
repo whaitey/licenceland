@@ -293,7 +293,19 @@ msgid "Business Footer"
 msgstr ""
 
 #: includes/class-licenceland-settings.php:225
-msgid "— Select —"
+msgid "GitHub Token"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:228
+msgid "GitHub personal access token for private repository updates. <a href=\"https://github.com/settings/tokens\" target=\"_blank\">Get token here</a>"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:220
+msgid "Consumer (Lakossági)"
+msgstr ""
+
+#: includes/class-licenceland-settings.php:221
+msgid "Business (Üzleti)"
 msgstr ""
 
 #: includes/class-licenceland-settings.php:235

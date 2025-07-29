@@ -26,6 +26,7 @@ $options_to_delete = [
     'licenceland_default_shop_type',
     'licenceland_version',
     'licenceland_activated',
+    'licenceland_github_token',
     
     // CD Keys options
     'licenceland_cd_keys_default_threshold',
