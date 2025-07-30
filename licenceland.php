@@ -41,7 +41,13 @@ $licencelandUpdateChecker->setBranch('main');
 $licencelandUpdateChecker->getVcsApi()->enableReleaseAssets();
 
 // Set custom update checker options
-$licencelandUpdateChecker->setCheckPeriod(12); // Check every 12 hours
+$licencelandUpdateChecker->setCheckPeriod(6); // Check every 6 hours for faster detection
+
+// Add custom headers for better GitHub API compatibility
+$licencelandUpdateChecker->getVcsApi()->setHttpFilter(function($url, $options) {
+    $options['headers']['User-Agent'] = 'LicenceLand-Plugin-Update-Checker/1.0';
+    return $options;
+});
 
 // Core classes
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-core.php';

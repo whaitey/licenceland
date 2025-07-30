@@ -406,6 +406,7 @@ class LicenceLand_Core {
     private function setup_update_checker() {
         // Add admin action to force update check
         add_action('wp_ajax_licenceland_force_update_check', [$this, 'force_update_check']);
+        add_action('wp_ajax_licenceland_debug_update_checker', [$this, 'debug_update_checker']);
         
         // Add admin notice for update checker status
         add_action('admin_notices', [$this, 'update_checker_notice']);
@@ -421,12 +422,20 @@ class LicenceLand_Core {
             wp_die();
         }
         
-        // Clear update cache
+        // Clear all update-related transients
         delete_site_transient('update_plugins');
         delete_site_transient('licenceland_update_check');
+        delete_site_transient('puc_request_info_licenceland');
+        delete_site_transient('puc_request_update_licenceland');
+        
+        // Clear WordPress update cache
+        wp_clean_update_cache();
         
         // Force WordPress to check for updates
         wp_update_plugins();
+        
+        // Log the update check
+        self::log('Manual update check triggered by admin', 'info');
         
         wp_send_json_success(__('Update check completed. Please refresh the plugins page to see if updates are available.', 'licenceland'));
     }
@@ -442,14 +451,21 @@ class LicenceLand_Core {
         
         // Check if we're on the main plugin page
         if (isset($_GET['page']) && $_GET['page'] === 'licenceland-settings') {
+            // Get update checker status
+            $update_checker_status = $this->get_update_checker_status();
             ?>
             <div class="notice notice-info is-dismissible">
                 <p>
                     <strong><?php _e('LicenceLand Update Checker:', 'licenceland'); ?></strong>
                     <?php _e('Current version:', 'licenceland'); ?> <strong><?php echo LICENCELAND_VERSION; ?></strong>
                     <br>
+                    <small><?php _e('Last check:', 'licenceland'); ?> <?php echo $update_checker_status['last_check']; ?></small>
+                    <br>
                     <button type="button" class="button button-secondary" id="force_update_check">
                         <?php _e('Force Update Check', 'licenceland'); ?>
+                    </button>
+                    <button type="button" class="button button-secondary" id="debug_update_checker">
+                        <?php _e('Debug Info', 'licenceland'); ?>
                     </button>
                     <span id="update_check_result" style="margin-left: 10px;"></span>
                 </p>
@@ -478,9 +494,97 @@ class LicenceLand_Core {
                         button.prop('disabled', false).text('<?php _e('Force Update Check', 'licenceland'); ?>');
                     });
                 });
+                
+                $('#debug_update_checker').on('click', function() {
+                    var button = $(this);
+                    var resultSpan = $('#update_check_result');
+                    
+                    button.prop('disabled', true).text('<?php _e('Getting debug info...', 'licenceland'); ?>');
+                    resultSpan.text('').removeClass('success error');
+                    
+                    $.post(ajaxurl, {
+                        action: 'licenceland_debug_update_checker',
+                        nonce: '<?php echo wp_create_nonce('licenceland_nonce'); ?>'
+                    }, function(response) {
+                        if (response.success) {
+                            resultSpan.html('<pre style="background: #f0f0f0; padding: 10px; margin-top: 10px; font-size: 12px;">' + response.data + '</pre>').removeClass('error').addClass('success');
+                        } else {
+                            resultSpan.text(response.data || '<?php _e('Debug failed.', 'licenceland'); ?>').removeClass('success').addClass('error');
+                        }
+                        button.prop('disabled', false).text('<?php _e('Debug Info', 'licenceland'); ?>');
+                    }).fail(function() {
+                        resultSpan.text('<?php _e('Debug failed.', 'licenceland'); ?>').removeClass('success').addClass('error');
+                        button.prop('disabled', false).text('<?php _e('Debug Info', 'licenceland'); ?>');
+                    });
+                });
             });
             </script>
             <?php
         }
+    }
+    
+    /**
+     * Get update checker status
+     */
+    private function get_update_checker_status() {
+        $last_check = get_site_transient('puc_request_info_licenceland');
+        $last_check_time = $last_check ? date('Y-m-d H:i:s', $last_check) : __('Never', 'licenceland');
+        
+        return [
+            'last_check' => $last_check_time,
+            'transients' => [
+                'puc_request_info_licenceland' => get_site_transient('puc_request_info_licenceland'),
+                'puc_request_update_licenceland' => get_site_transient('puc_request_update_licenceland'),
+                'update_plugins' => get_site_transient('update_plugins')
+            ]
+        ];
+    }
+    
+    /**
+     * Debug update checker via AJAX
+     */
+    public function debug_update_checker() {
+        check_ajax_referer('licenceland_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die();
+        }
+        
+        $debug_info = [];
+        
+        // Plugin info
+        $debug_info[] = "Plugin Version: " . LICENCELAND_VERSION;
+        $debug_info[] = "WordPress Version: " . get_bloginfo('version');
+        $debug_info[] = "PHP Version: " . PHP_VERSION;
+        
+        // Update checker status
+        $status = $this->get_update_checker_status();
+        $debug_info[] = "Last Update Check: " . $status['last_check'];
+        
+        // Transients
+        $debug_info[] = "\nTransients:";
+        foreach ($status['transients'] as $key => $value) {
+            $debug_info[] = "  {$key}: " . ($value ? 'Set' : 'Not set');
+        }
+        
+        // GitHub API test
+        $debug_info[] = "\nGitHub API Test:";
+        $response = wp_remote_get('https://api.github.com/repos/whaitey/licenceland/tags');
+        if (is_wp_error($response)) {
+            $debug_info[] = "  Error: " . $response->get_error_message();
+        } else {
+            $body = wp_remote_retrieve_body($response);
+            $tags = json_decode($body, true);
+            if ($tags) {
+                $debug_info[] = "  Available tags:";
+                foreach (array_slice($tags, 0, 5) as $tag) {
+                    $debug_info[] = "    " . $tag['name'];
+                }
+            } else {
+                $debug_info[] = "  Failed to parse response";
+            }
+        }
+        
+        wp_send_json_success(implode("\n", $debug_info));
     }
 }
