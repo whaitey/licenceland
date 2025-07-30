@@ -26,6 +26,7 @@ class LicenceLand_Order_Resend {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('wp_ajax_licenceland_resend_order_email', [$this, 'resend_order_email']);
         add_action('wp_ajax_licenceland_resend_order_invoice', [$this, 'resend_order_invoice']);
+        add_action('wp_ajax_licenceland_test_email', [$this, 'test_email']);
         
         // Add resend buttons to order actions
         add_action('woocommerce_admin_order_actions_end', [$this, 'add_resend_buttons']);
@@ -85,6 +86,36 @@ class LicenceLand_Order_Resend {
         ?>
         <div class="wrap">
             <h1><?php _e('Order Resend', 'licenceland'); ?></h1>
+            
+            <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+            <div class="licenceland-debug-info">
+                <h2><?php _e('Debug Information', 'licenceland'); ?></h2>
+                <p><strong><?php _e('WooCommerce Version:', 'licenceland'); ?></strong> <?php echo WC()->version; ?></p>
+                <p><strong><?php _e('WordPress Version:', 'licenceland'); ?></strong> <?php echo get_bloginfo('version'); ?></p>
+                <p><strong><?php _e('PHP Version:', 'licenceland'); ?></strong> <?php echo PHP_VERSION; ?></p>
+                <p><strong><?php _e('Email Debug Mode:', 'licenceland'); ?></strong> <?php echo defined('WP_DEBUG') && WP_DEBUG ? __('Enabled', 'licenceland') : __('Disabled', 'licenceland'); ?></p>
+                
+                <?php
+                // Test email functionality
+                $mailer = WC()->mailer();
+                $emails = $mailer->get_emails();
+                echo '<p><strong>' . __('Available WooCommerce Emails:', 'licenceland') . '</strong></p>';
+                echo '<ul>';
+                foreach ($emails as $email) {
+                    echo '<li>' . esc_html($email->id ?? 'unknown') . ' - ' . esc_html(get_class($email)) . '</li>';
+                }
+                echo '</ul>';
+                ?>
+            </div>
+            <?php endif; ?>
+            
+            <div class="licenceland-test-email">
+                <h2><?php _e('Test Email Functionality', 'licenceland'); ?></h2>
+                <p><?php _e('Use this to test if basic email functionality is working:', 'licenceland'); ?></p>
+                <input type="email" id="test_email" placeholder="<?php _e('Enter email address to test', 'licenceland'); ?>" value="<?php echo esc_attr(get_option('admin_email')); ?>" style="width: 300px; margin-right: 10px;">
+                <button type="button" class="button button-secondary" id="test_email_btn"><?php _e('Send Test Email', 'licenceland'); ?></button>
+                <span id="test_email_result" style="margin-left: 10px;"></span>
+            </div>
             
             <div class="licenceland-resend-form">
                 <h2><?php _e('Resend Order Email', 'licenceland'); ?></h2>
@@ -149,6 +180,43 @@ class LicenceLand_Order_Resend {
             border: 1px solid #ccd0d4;
             border-radius: 4px;
         }
+        .licenceland-debug-info {
+            background: #f0f6fc;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #0073aa;
+            border-radius: 4px;
+        }
+        .licenceland-debug-info h2 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+        .licenceland-debug-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .licenceland-debug-info li {
+            margin: 5px 0;
+        }
+        .licenceland-test-email {
+            background: #fff;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #ccd0d4;
+            border-radius: 4px;
+        }
+        .licenceland-test-email h2 {
+            margin-top: 0;
+        }
+        #test_email_result {
+            font-weight: bold;
+        }
+        #test_email_result.success {
+            color: #46b450;
+        }
+        #test_email_result.error {
+            color: #dc3232;
+        }
         </style>
         
         <script>
@@ -178,6 +246,37 @@ class LicenceLand_Order_Resend {
                         button.prop('disabled', false).text(button.data('original-text') || '<?php _e('Resend', 'licenceland'); ?>');
                     });
                 }
+            });
+            
+            // Test email functionality
+            $('#test_email_btn').on('click', function() {
+                var testEmail = $('#test_email').val();
+                var button = $(this);
+                var resultSpan = $('#test_email_result');
+                
+                if (!testEmail) {
+                    resultSpan.text('<?php _e('Please enter an email address.', 'licenceland'); ?>').removeClass('success error').addClass('error');
+                    return;
+                }
+                
+                button.prop('disabled', true).text('<?php _e('Sending...', 'licenceland'); ?>');
+                resultSpan.text('').removeClass('success error');
+                
+                $.post(ajaxurl, {
+                    action: 'licenceland_test_email',
+                    test_email: testEmail,
+                    nonce: '<?php echo wp_create_nonce('licenceland_resend_order'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        resultSpan.text(response.data).removeClass('error').addClass('success');
+                    } else {
+                        resultSpan.text(response.data || '<?php _e('Error sending test email.', 'licenceland'); ?>').removeClass('success').addClass('error');
+                    }
+                    button.prop('disabled', false).text('<?php _e('Send Test Email', 'licenceland'); ?>');
+                }).fail(function() {
+                    resultSpan.text('<?php _e('Error sending test email.', 'licenceland'); ?>').removeClass('success').addClass('error');
+                    button.prop('disabled', false).text('<?php _e('Send Test Email', 'licenceland'); ?>');
+                });
             });
         });
         </script>
@@ -320,6 +419,54 @@ class LicenceLand_Order_Resend {
     }
     
     /**
+     * AJAX handler for testing email functionality
+     */
+    public function test_email() {
+        check_ajax_referer('licenceland_resend_order', 'nonce');
+        
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die();
+        }
+        
+        $test_email = sanitize_email($_POST['test_email'] ?? get_option('admin_email'));
+        
+        if (!is_email($test_email)) {
+            wp_send_json_error(__('Invalid email address.', 'licenceland'));
+        }
+        
+        $subject = __('LicenceLand Email Test', 'licenceland');
+        $message = sprintf(
+            __('This is a test email from LicenceLand plugin.
+
+Time: %s
+WordPress Version: %s
+WooCommerce Version: %s
+PHP Version: %s
+
+If you receive this email, the basic email functionality is working.', 'licenceland'),
+            current_time('Y-m-d H:i:s'),
+            get_bloginfo('version'),
+            WC()->version,
+            PHP_VERSION
+        );
+        
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>'
+        ];
+        
+        $sent = wp_mail($test_email, $subject, wpautop($message), $headers);
+        
+        if ($sent) {
+            LicenceLand_Core::log("Test email sent successfully to: {$test_email}", 'info');
+            wp_send_json_success(sprintf(__('Test email sent successfully to %s.', 'licenceland'), $test_email));
+        } else {
+            LicenceLand_Core::log("Test email failed to send to: {$test_email}", 'error');
+            wp_send_json_error(__('Failed to send test email. Please check your email configuration.', 'licenceland'));
+        }
+    }
+    
+    /**
      * Resend email for a specific order
      */
     private function resend_email($order_id, $email_type) {
@@ -380,7 +527,10 @@ class LicenceLand_Order_Resend {
             'customer_processing_order' => 'WC_Email_Customer_Processing_Order',
             'customer_completed_order' => 'WC_Email_Customer_Completed_Order',
             'customer_invoice' => 'WC_Email_Customer_Invoice',
-            'customer_note' => 'WC_Email_Customer_Note'
+            'customer_note' => 'WC_Email_Customer_Note',
+            'customer_refunded_order' => 'WC_Email_Customer_Refunded_Order',
+            'customer_on_hold_order' => 'WC_Email_Customer_On_Hold_Order',
+            'customer_cancelled_order' => 'WC_Email_Customer_Cancelled_Order'
         ];
         
         return isset($email_classes[$email_type]) ? $email_classes[$email_type] : null;
@@ -397,36 +547,237 @@ class LicenceLand_Order_Resend {
         $emails = $mailer->get_emails();
         $email = null;
         
-        // Try to find the email by type
+        // Debug: Log available emails
+        $available_emails = [];
         foreach ($emails as $email_obj) {
-            if ($email_obj->id === $email_type) {
+            $available_emails[] = $email_obj->id ?? 'unknown';
+        }
+        LicenceLand_Core::log("Available email types: " . implode(', ', $available_emails), 'debug');
+        
+        // Try to find the email by type (check multiple properties)
+        foreach ($emails as $email_obj) {
+            if (isset($email_obj->id) && $email_obj->id === $email_type) {
+                $email = $email_obj;
+                break;
+            }
+            // Also check the email type property
+            if (isset($email_obj->email_type) && $email_obj->email_type === $email_type) {
                 $email = $email_obj;
                 break;
             }
         }
         
-        // If not found, try to create it
+        // If not found in existing emails, try to create it
         if (!$email && class_exists($email_class)) {
-            $email = new $email_class();
+            try {
+                $email = new $email_class();
+                LicenceLand_Core::log("Created new email instance: {$email_class}", 'debug');
+            } catch (Exception $e) {
+                LicenceLand_Core::log("Failed to create email instance {$email_class}: " . $e->getMessage(), 'error');
+                return false;
+            }
         }
         
         if (!$email) {
+            LicenceLand_Core::log("No email object found for type: {$email_type}", 'error');
             return false;
         }
         
+        // Ensure the email is properly initialized
+        if (method_exists($email, 'init')) {
+            $email->init();
+        }
+        
         // Set up the email
-        $email->setup_locale();
+        if (method_exists($email, 'setup_locale')) {
+            $email->setup_locale();
+        }
+        
+        // Set the recipient if not already set
+        $customer_email = $order->get_billing_email();
+        if ($customer_email && method_exists($email, 'set_recipient')) {
+            $email->set_recipient($customer_email);
+        }
         
         // Send the email
-        $sent = $email->trigger($order->get_id());
+        $sent = false;
+        try {
+            if (method_exists($email, 'trigger')) {
+                $sent = $email->trigger($order->get_id());
+            } else {
+                LicenceLand_Core::log("Email object does not have trigger method", 'error');
+                return false;
+            }
+        } catch (Exception $e) {
+            LicenceLand_Core::log("Error triggering email: " . $e->getMessage(), 'error');
+            return false;
+        }
+        
+        // If WooCommerce email failed, try fallback method
+        if (!$sent) {
+            LicenceLand_Core::log("WooCommerce email failed, trying fallback method", 'warning');
+            $sent = $this->send_fallback_email($order, $email_type);
+        }
         
         // Restore locale
-        $email->restore_locale();
+        if (method_exists($email, 'restore_locale')) {
+            $email->restore_locale();
+        }
         
         // Debug: Log the attempt
-        LicenceLand_Core::log("Order resend attempt: Order #{$order->get_id()}, Email type: {$email_type}, Sent: " . ($sent ? 'Yes' : 'No'));
+        LicenceLand_Core::log("Order resend attempt: Order #{$order->get_id()}, Email type: {$email_type}, Sent: " . ($sent ? 'Yes' : 'No'), 'info');
         
         return $sent;
+    }
+    
+    /**
+     * Fallback email sending method using wp_mail
+     */
+    private function send_fallback_email($order, $email_type) {
+        $customer_email = $order->get_billing_email();
+        $customer_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+        $order_number = $order->get_order_number();
+        
+        // Get email templates based on type
+        $subject = '';
+        $message = '';
+        
+        switch ($email_type) {
+            case 'new_order':
+                $subject = sprintf(__('New Order #%s - %s', 'licenceland'), $order_number, get_bloginfo('name'));
+                $message = $this->get_new_order_template($order);
+                break;
+                
+            case 'customer_processing_order':
+                $subject = sprintf(__('Order #%s is being processed - %s', 'licenceland'), $order_number, get_bloginfo('name'));
+                $message = $this->get_processing_order_template($order);
+                break;
+                
+            case 'customer_completed_order':
+                $subject = sprintf(__('Order #%s has been completed - %s', 'licenceland'), $order_number, get_bloginfo('name'));
+                $message = $this->get_completed_order_template($order);
+                break;
+                
+            case 'customer_invoice':
+                $subject = sprintf(__('Invoice for Order #%s - %s', 'licenceland'), $order_number, get_bloginfo('name'));
+                $message = $this->get_invoice_template($order);
+                break;
+                
+            default:
+                LicenceLand_Core::log("Unknown email type for fallback: {$email_type}", 'error');
+                return false;
+        }
+        
+        // Set up email headers
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>'
+        ];
+        
+        // Send the email
+        $sent = wp_mail($customer_email, $subject, $message, $headers);
+        
+        LicenceLand_Core::log("Fallback email sent: " . ($sent ? 'Yes' : 'No') . " to {$customer_email}", 'info');
+        
+        return $sent;
+    }
+    
+    /**
+     * Get new order email template
+     */
+    private function get_new_order_template($order) {
+        $order_number = $order->get_order_number();
+        $total = $order->get_formatted_order_total();
+        $items = $order->get_items();
+        
+        $items_html = '';
+        foreach ($items as $item) {
+            $items_html .= '<tr>';
+            $items_html .= '<td>' . esc_html($item->get_name()) . '</td>';
+            $items_html .= '<td>' . esc_html($item->get_quantity()) . '</td>';
+            $items_html .= '<td>' . esc_html($order->get_formatted_line_subtotal($item)) . '</td>';
+            $items_html .= '</tr>';
+        }
+        
+        return sprintf(
+            '<html><body>
+            <h2>%s</h2>
+            <p>%s</p>
+            <table border="1" cellpadding="5" cellspacing="0">
+                <tr><th>%s</th><th>%s</th><th>%s</th></tr>
+                %s
+            </table>
+            <p><strong>%s: %s</strong></p>
+            <p>%s</p>
+            </body></html>',
+            sprintf(__('New Order #%s', 'licenceland'), $order_number),
+            __('Thank you for your order! We have received your order and will process it shortly.', 'licenceland'),
+            __('Product', 'licenceland'),
+            __('Quantity', 'licenceland'),
+            __('Total', 'licenceland'),
+            $items_html,
+            __('Order Total', 'licenceland'),
+            $total,
+            __('You will receive another email when your order is processed.', 'licenceland')
+        );
+    }
+    
+    /**
+     * Get processing order email template
+     */
+    private function get_processing_order_template($order) {
+        $order_number = $order->get_order_number();
+        
+        return sprintf(
+            '<html><body>
+            <h2>%s</h2>
+            <p>%s</p>
+            <p>%s</p>
+            </body></html>',
+            sprintf(__('Order #%s is being processed', 'licenceland'), $order_number),
+            __('Your order is now being processed and will be shipped soon.', 'licenceland'),
+            __('Thank you for your patience!', 'licenceland')
+        );
+    }
+    
+    /**
+     * Get completed order email template
+     */
+    private function get_completed_order_template($order) {
+        $order_number = $order->get_order_number();
+        
+        return sprintf(
+            '<html><body>
+            <h2>%s</h2>
+            <p>%s</p>
+            <p>%s</p>
+            </body></html>',
+            sprintf(__('Order #%s has been completed', 'licenceland'), $order_number),
+            __('Your order has been completed successfully!', 'licenceland'),
+            __('Thank you for your purchase!', 'licenceland')
+        );
+    }
+    
+    /**
+     * Get invoice email template
+     */
+    private function get_invoice_template($order) {
+        $order_number = $order->get_order_number();
+        $total = $order->get_formatted_order_total();
+        
+        return sprintf(
+            '<html><body>
+            <h2>%s</h2>
+            <p>%s</p>
+            <p><strong>%s: %s</strong></p>
+            <p>%s</p>
+            </body></html>',
+            sprintf(__('Invoice for Order #%s', 'licenceland'), $order_number),
+            __('Please find your invoice attached below.', 'licenceland'),
+            __('Total Amount', 'licenceland'),
+            $total,
+            __('Thank you for your business!', 'licenceland')
+        );
     }
     
     /**
