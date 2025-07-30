@@ -22,6 +22,9 @@ class LicenceLand_Core {
         
         // Handle payment-based order creation
         $this->handle_payment_based_order_creation();
+        
+        // Add update checker functionality
+        $this->setup_update_checker();
     }
     
     public function activate() {
@@ -394,6 +397,90 @@ class LicenceLand_Core {
         if ($order) {
             $order->update_meta_data('_licenceland_checkout_data_stored', current_time('mysql'));
             $order->save();
+        }
+    }
+    
+    /**
+     * Setup update checker functionality
+     */
+    private function setup_update_checker() {
+        // Add admin action to force update check
+        add_action('wp_ajax_licenceland_force_update_check', [$this, 'force_update_check']);
+        
+        // Add admin notice for update checker status
+        add_action('admin_notices', [$this, 'update_checker_notice']);
+    }
+    
+    /**
+     * Force update check via AJAX
+     */
+    public function force_update_check() {
+        check_ajax_referer('licenceland_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die();
+        }
+        
+        // Clear update cache
+        delete_site_transient('update_plugins');
+        delete_site_transient('licenceland_update_check');
+        
+        // Force WordPress to check for updates
+        wp_update_plugins();
+        
+        wp_send_json_success(__('Update check completed. Please refresh the plugins page to see if updates are available.', 'licenceland'));
+    }
+    
+    /**
+     * Show update checker notice
+     */
+    public function update_checker_notice() {
+        // Only show on plugin pages
+        if (!isset($_GET['page']) || strpos($_GET['page'], 'licenceland') === false) {
+            return;
+        }
+        
+        // Check if we're on the main plugin page
+        if (isset($_GET['page']) && $_GET['page'] === 'licenceland-settings') {
+            ?>
+            <div class="notice notice-info is-dismissible">
+                <p>
+                    <strong><?php _e('LicenceLand Update Checker:', 'licenceland'); ?></strong>
+                    <?php _e('Current version:', 'licenceland'); ?> <strong><?php echo LICENCELAND_VERSION; ?></strong>
+                    <br>
+                    <button type="button" class="button button-secondary" id="force_update_check">
+                        <?php _e('Force Update Check', 'licenceland'); ?>
+                    </button>
+                    <span id="update_check_result" style="margin-left: 10px;"></span>
+                </p>
+            </div>
+            <script>
+            jQuery(document).ready(function($) {
+                $('#force_update_check').on('click', function() {
+                    var button = $(this);
+                    var resultSpan = $('#update_check_result');
+                    
+                    button.prop('disabled', true).text('<?php _e('Checking...', 'licenceland'); ?>');
+                    resultSpan.text('').removeClass('success error');
+                    
+                    $.post(ajaxurl, {
+                        action: 'licenceland_force_update_check',
+                        nonce: '<?php echo wp_create_nonce('licenceland_nonce'); ?>'
+                    }, function(response) {
+                        if (response.success) {
+                            resultSpan.text(response.data).removeClass('error').addClass('success');
+                        } else {
+                            resultSpan.text(response.data || '<?php _e('Update check failed.', 'licenceland'); ?>').removeClass('success').addClass('error');
+                        }
+                        button.prop('disabled', false).text('<?php _e('Force Update Check', 'licenceland'); ?>');
+                    }).fail(function() {
+                        resultSpan.text('<?php _e('Update check failed.', 'licenceland'); ?>').removeClass('success').addClass('error');
+                        button.prop('disabled', false).text('<?php _e('Force Update Check', 'licenceland'); ?>');
+                    });
+                });
+            });
+            </script>
+            <?php
         }
     }
 }

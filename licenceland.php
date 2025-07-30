@@ -36,6 +36,13 @@ $licencelandUpdateChecker = PucFactory::buildUpdateChecker(
     'licenceland'
 );
 
+// Configure the update checker
+$licencelandUpdateChecker->setBranch('main');
+$licencelandUpdateChecker->getVcsApi()->enableReleaseAssets();
+
+// Set custom update checker options
+$licencelandUpdateChecker->setCheckPeriod(12); // Check every 12 hours
+
 // Core classes
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-core.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-cd-keys.php';
