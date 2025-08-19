@@ -63,6 +63,12 @@ class LicenceLand_Sync {
             'callback' => [$this, 'route_sync_order'],
             'permission_callback' => [$this, 'verify_hmac_request'],
         ]);
+
+        register_rest_route('licenceland/v1', '/sync/order/resend', [
+            'methods' => 'POST',
+            'callback' => [$this, 'route_resend_remote_email'],
+            'permission_callback' => [$this, 'verify_hmac_request'],
+        ]);
     }
 
     private function get_setting(string $key, $default = '') {
@@ -374,6 +380,61 @@ class LicenceLand_Sync {
             $args['method'] = 'DELETE';
             wp_remote_request($url, $args);
         }
+    }
+
+    // Public wrapper returning response body/ok for AJAX proxy needs
+    public function send_to_remote_public(string $method, string $path, string $body): array {
+        $remote = rtrim((string)$this->get_setting('ll_sync_remote_url', ''), '/');
+        $secret = (string)$this->get_setting('ll_sync_shared_secret', '');
+        $siteId = (string)$this->get_setting('ll_sync_site_id', home_url());
+        if ($remote === '' || $secret === '') {
+            return ['ok' => false, 'error' => 'not_configured'];
+        }
+        $ts = (string) time();
+        $payload = strtoupper($method) . "\n" . $path . "\n" . $ts . "\n" . $body;
+        $sig = base64_encode(hash_hmac('sha256', $payload, $secret, true));
+        $args = [
+            'timeout' => 10,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-LL-Id' => $siteId,
+                'X-LL-Timestamp' => $ts,
+                'X-LL-Signature' => $sig,
+                'X-LL-Sync' => '1',
+            ],
+            'body' => $body,
+        ];
+        $url = $remote . $path;
+        $response = ($method === 'POST') ? wp_remote_post($url, $args) : wp_remote_request($url, $args + ['method' => $method]);
+        if (is_wp_error($response)) {
+            return ['ok' => false, 'error' => $response->get_error_message()];
+        }
+        $code = wp_remote_retrieve_response_code($response);
+        $bodyStr = wp_remote_retrieve_body($response);
+        $json = json_decode($bodyStr, true);
+        return ($code >= 200 && $code < 300) ? (is_array($json) ? $json + ['ok' => true] : ['ok' => true]) : ['ok' => false, 'error' => $bodyStr ?: 'http_' . $code];
+    }
+
+    // Remote email resend endpoint (runs on Secondary when invoked from Primary)
+    public function route_resend_remote_email(WP_REST_Request $request) {
+        $data = json_decode($request->get_body(), true);
+        if (!is_array($data)) {
+            return new WP_REST_Response(['error' => 'invalid_body'], 400);
+        }
+        $remoteOrderId = (int)($data['remote_order_id'] ?? 0);
+        $emailType = (string)($data['email_type'] ?? '');
+        if (!$remoteOrderId || $emailType === '') {
+            return new WP_REST_Response(['error' => 'missing_params'], 400);
+        }
+        $order = wc_get_order($remoteOrderId);
+        if (!$order) {
+            return new WP_REST_Response(['error' => 'order_not_found'], 404);
+        }
+        if (!function_exists('licenceland') || !licenceland()->order_resend) {
+            return new WP_REST_Response(['error' => 'resend_unavailable'], 500);
+        }
+        $res = licenceland()->order_resend->api_resend_email($remoteOrderId, $emailType);
+        return new WP_REST_Response($res, $res['success'] ? 200 : 500);
     }
 
     // Admin column: Origin

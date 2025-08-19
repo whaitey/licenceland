@@ -27,6 +27,7 @@ class LicenceLand_Order_Resend {
         add_action('wp_ajax_licenceland_resend_order_email', [$this, 'resend_order_email']);
         add_action('wp_ajax_licenceland_resend_order_invoice', [$this, 'resend_order_invoice']);
         add_action('wp_ajax_licenceland_test_email', [$this, 'test_email']);
+        add_action('wp_ajax_licenceland_resend_remote_order_email', [$this, 'resend_remote_order_email']);
         
         // Add resend buttons to order actions
         add_action('woocommerce_admin_order_actions_end', [$this, 'add_resend_buttons']);
@@ -517,6 +518,50 @@ If you receive this email, the basic email functionality is working.', 'licencel
             ];
         }
     }
+
+    /**
+     * Public API wrapper for resending email (for REST callbacks)
+     */
+    public function api_resend_email($order_id, $email_type) {
+        return $this->resend_email($order_id, $email_type);
+    }
+
+    /**
+     * AJAX: Resend email on remote site (proxy via Sync)
+     */
+    public function resend_remote_order_email() {
+        check_ajax_referer('licenceland_resend_order', 'nonce');
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die();
+        }
+
+        $order_id = (int) ($_POST['order_id'] ?? 0);
+        $email_type = sanitize_text_field($_POST['email_type'] ?? '');
+        $order = wc_get_order($order_id);
+        if (!$order || !$email_type) {
+            wp_send_json_error(__('Invalid input.', 'licenceland'));
+        }
+
+        $remote_order_id = $order->get_meta('_ll_remote_order_id');
+        if (!$remote_order_id) {
+            wp_send_json_error(__('No remote order mapping found.', 'licenceland'));
+        }
+
+        if (!function_exists('licenceland') || !licenceland()->sync) {
+            wp_send_json_error(__('Sync module unavailable.', 'licenceland'));
+        }
+
+        $payload = json_encode([
+            'remote_order_id' => (string)$remote_order_id,
+            'email_type' => $email_type,
+        ]);
+
+        $res = licenceland()->sync->send_to_remote_public('POST', '/wp-json/licenceland/v1/sync/order/resend', $payload);
+        if ($res['ok'] ?? false) {
+            wp_send_json_success(__('Remote resend requested.', 'licenceland'));
+        }
+        wp_send_json_error(esc_html($res['error'] ?? __('Remote resend failed.', 'licenceland')));
+    }
     
     /**
      * Get email class for the specified type
@@ -537,92 +582,11 @@ If you receive this email, the basic email functionality is working.', 'licencel
     }
     
     /**
-     * Send email using WooCommerce email system
+     * Send email using direct wp_mail method (more reliable than WooCommerce email system)
      */
     private function send_email($order, $email_class, $email_type) {
-        // Get WooCommerce mailer
-        $mailer = WC()->mailer();
-        
-        // Get the email object from mailer
-        $emails = $mailer->get_emails();
-        $email = null;
-        
-        // Debug: Log available emails
-        $available_emails = [];
-        foreach ($emails as $email_obj) {
-            $available_emails[] = $email_obj->id ?? 'unknown';
-        }
-        LicenceLand_Core::log("Available email types: " . implode(', ', $available_emails), 'debug');
-        
-        // Try to find the email by type (check multiple properties)
-        foreach ($emails as $email_obj) {
-            if (isset($email_obj->id) && $email_obj->id === $email_type) {
-                $email = $email_obj;
-                break;
-            }
-            // Also check the email type property
-            if (isset($email_obj->email_type) && $email_obj->email_type === $email_type) {
-                $email = $email_obj;
-                break;
-            }
-        }
-        
-        // If not found in existing emails, try to create it
-        if (!$email && class_exists($email_class)) {
-            try {
-                $email = new $email_class();
-                LicenceLand_Core::log("Created new email instance: {$email_class}", 'debug');
-            } catch (Exception $e) {
-                LicenceLand_Core::log("Failed to create email instance {$email_class}: " . $e->getMessage(), 'error');
-                return false;
-            }
-        }
-        
-        if (!$email) {
-            LicenceLand_Core::log("No email object found for type: {$email_type}", 'error');
-            return false;
-        }
-        
-        // Ensure the email is properly initialized
-        if (method_exists($email, 'init')) {
-            $email->init();
-        }
-        
-        // Set up the email
-        if (method_exists($email, 'setup_locale')) {
-            $email->setup_locale();
-        }
-        
-        // Set the recipient if not already set
-        $customer_email = $order->get_billing_email();
-        if ($customer_email && method_exists($email, 'set_recipient')) {
-            $email->set_recipient($customer_email);
-        }
-        
-        // Send the email
-        $sent = false;
-        try {
-            if (method_exists($email, 'trigger')) {
-                $sent = $email->trigger($order->get_id());
-            } else {
-                LicenceLand_Core::log("Email object does not have trigger method", 'error');
-                return false;
-            }
-        } catch (Exception $e) {
-            LicenceLand_Core::log("Error triggering email: " . $e->getMessage(), 'error');
-            return false;
-        }
-        
-        // If WooCommerce email failed, try fallback method
-        if (!$sent) {
-            LicenceLand_Core::log("WooCommerce email failed, trying fallback method", 'warning');
-            $sent = $this->send_fallback_email($order, $email_type);
-        }
-        
-        // Restore locale
-        if (method_exists($email, 'restore_locale')) {
-            $email->restore_locale();
-        }
+        // Use the fallback method directly since it's more reliable
+        $sent = $this->send_fallback_email($order, $email_type);
         
         // Debug: Log the attempt
         LicenceLand_Core::log("Order resend attempt: Order #{$order->get_id()}, Email type: {$email_type}, Sent: " . ($sent ? 'Yes' : 'No'), 'info');
@@ -668,16 +632,18 @@ If you receive this email, the basic email functionality is working.', 'licencel
                 return false;
         }
         
-        // Set up email headers
+        // Set up email headers with better formatting
         $headers = [
             'Content-Type: text/html; charset=UTF-8',
-            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>'
+            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
+            'Reply-To: ' . get_option('admin_email'),
+            'X-Mailer: WordPress/LicenceLand'
         ];
         
         // Send the email
         $sent = wp_mail($customer_email, $subject, $message, $headers);
         
-        LicenceLand_Core::log("Fallback email sent: " . ($sent ? 'Yes' : 'No') . " to {$customer_email}", 'info');
+        LicenceLand_Core::log("Email sent: " . ($sent ? 'Yes' : 'No') . " to {$customer_email} (Type: {$email_type})", 'info');
         
         return $sent;
     }
@@ -689,28 +655,71 @@ If you receive this email, the basic email functionality is working.', 'licencel
         $order_number = $order->get_order_number();
         $total = $order->get_formatted_order_total();
         $items = $order->get_items();
+        $customer_name = $order->get_billing_first_name();
         
         $items_html = '';
         foreach ($items as $item) {
-            $items_html .= '<tr>';
-            $items_html .= '<td>' . esc_html($item->get_name()) . '</td>';
-            $items_html .= '<td>' . esc_html($item->get_quantity()) . '</td>';
-            $items_html .= '<td>' . esc_html($order->get_formatted_line_subtotal($item)) . '</td>';
+            $items_html .= '<tr style="border-bottom: 1px solid #eee;">';
+            $items_html .= '<td style="padding: 10px;">' . esc_html($item->get_name()) . '</td>';
+            $items_html .= '<td style="padding: 10px; text-align: center;">' . esc_html($item->get_quantity()) . '</td>';
+            $items_html .= '<td style="padding: 10px; text-align: right;">' . esc_html($order->get_formatted_line_subtotal($item)) . '</td>';
             $items_html .= '</tr>';
         }
         
         return sprintf(
-            '<html><body>
-            <h2>%s</h2>
-            <p>%s</p>
-            <table border="1" cellpadding="5" cellspacing="0">
-                <tr><th>%s</th><th>%s</th><th>%s</th></tr>
-                %s
-            </table>
-            <p><strong>%s: %s</strong></p>
-            <p>%s</p>
-            </body></html>',
+            '<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #0073aa; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; background: #f9f9f9; }
+                    .order-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
+                    .order-table th { background: #0073aa; color: white; padding: 10px; text-align: left; }
+                    .order-table td { padding: 10px; }
+                    .total { font-size: 18px; font-weight: bold; text-align: right; padding: 20px; background: #e7f3ff; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>%s</h1>
+                    </div>
+                    <div class="content">
+                        <p>%s %s,</p>
+                        <p>%s</p>
+                        
+                        <table class="order-table">
+                            <thead>
+                                <tr>
+                                    <th>%s</th>
+                                    <th style="text-align: center;">%s</th>
+                                    <th style="text-align: right;">%s</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                %s
+                            </tbody>
+                        </table>
+                        
+                        <div class="total">
+                            <strong>%s: %s</strong>
+                        </div>
+                        
+                        <p>%s</p>
+                    </div>
+                    <div class="footer">
+                        <p>%s</p>
+                    </div>
+                </div>
+            </body>
+            </html>',
             sprintf(__('New Order #%s', 'licenceland'), $order_number),
+            __('Dear', 'licenceland'),
+            $customer_name ?: __('Customer', 'licenceland'),
             __('Thank you for your order! We have received your order and will process it shortly.', 'licenceland'),
             __('Product', 'licenceland'),
             __('Quantity', 'licenceland'),
@@ -718,7 +727,8 @@ If you receive this email, the basic email functionality is working.', 'licencel
             $items_html,
             __('Order Total', 'licenceland'),
             $total,
-            __('You will receive another email when your order is processed.', 'licenceland')
+            __('You will receive another email when your order is processed.', 'licenceland'),
+            get_bloginfo('name')
         );
     }
     
@@ -727,16 +737,43 @@ If you receive this email, the basic email functionality is working.', 'licencel
      */
     private function get_processing_order_template($order) {
         $order_number = $order->get_order_number();
+        $customer_name = $order->get_billing_first_name();
         
         return sprintf(
-            '<html><body>
-            <h2>%s</h2>
-            <p>%s</p>
-            <p>%s</p>
-            </body></html>',
+            '<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #28a745; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; background: #f9f9f9; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>%s</h1>
+                    </div>
+                    <div class="content">
+                        <p>%s %s,</p>
+                        <p>%s</p>
+                        <p>%s</p>
+                    </div>
+                    <div class="footer">
+                        <p>%s</p>
+                    </div>
+                </div>
+            </body>
+            </html>',
             sprintf(__('Order #%s is being processed', 'licenceland'), $order_number),
+            __('Dear', 'licenceland'),
+            $customer_name ?: __('Customer', 'licenceland'),
             __('Your order is now being processed and will be shipped soon.', 'licenceland'),
-            __('Thank you for your patience!', 'licenceland')
+            __('Thank you for your patience!', 'licenceland'),
+            get_bloginfo('name')
         );
     }
     
@@ -745,16 +782,43 @@ If you receive this email, the basic email functionality is working.', 'licencel
      */
     private function get_completed_order_template($order) {
         $order_number = $order->get_order_number();
+        $customer_name = $order->get_billing_first_name();
         
         return sprintf(
-            '<html><body>
-            <h2>%s</h2>
-            <p>%s</p>
-            <p>%s</p>
-            </body></html>',
+            '<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #17a2b8; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; background: #f9f9f9; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>%s</h1>
+                    </div>
+                    <div class="content">
+                        <p>%s %s,</p>
+                        <p>%s</p>
+                        <p>%s</p>
+                    </div>
+                    <div class="footer">
+                        <p>%s</p>
+                    </div>
+                </div>
+            </body>
+            </html>',
             sprintf(__('Order #%s has been completed', 'licenceland'), $order_number),
+            __('Dear', 'licenceland'),
+            $customer_name ?: __('Customer', 'licenceland'),
             __('Your order has been completed successfully!', 'licenceland'),
-            __('Thank you for your purchase!', 'licenceland')
+            __('Thank you for your purchase!', 'licenceland'),
+            get_bloginfo('name')
         );
     }
     
@@ -764,19 +828,49 @@ If you receive this email, the basic email functionality is working.', 'licencel
     private function get_invoice_template($order) {
         $order_number = $order->get_order_number();
         $total = $order->get_formatted_order_total();
+        $customer_name = $order->get_billing_first_name();
         
         return sprintf(
-            '<html><body>
-            <h2>%s</h2>
-            <p>%s</p>
-            <p><strong>%s: %s</strong></p>
-            <p>%s</p>
-            </body></html>',
+            '<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #6f42c1; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; background: #f9f9f9; }
+                    .total { font-size: 18px; font-weight: bold; text-align: right; padding: 20px; background: #e7f3ff; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>%s</h1>
+                    </div>
+                    <div class="content">
+                        <p>%s %s,</p>
+                        <p>%s</p>
+                        <div class="total">
+                            <strong>%s: %s</strong>
+                        </div>
+                        <p>%s</p>
+                    </div>
+                    <div class="footer">
+                        <p>%s</p>
+                    </div>
+                </div>
+            </body>
+            </html>',
             sprintf(__('Invoice for Order #%s', 'licenceland'), $order_number),
+            __('Dear', 'licenceland'),
+            $customer_name ?: __('Customer', 'licenceland'),
             __('Please find your invoice attached below.', 'licenceland'),
             __('Total Amount', 'licenceland'),
             $total,
-            __('Thank you for your business!', 'licenceland')
+            __('Thank you for your business!', 'licenceland'),
+            get_bloginfo('name')
         );
     }
     
