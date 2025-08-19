@@ -72,6 +72,7 @@ class LicenceLand_Dual_Shop {
         add_action('woocommerce_checkout_process', [$this, 'block_by_ip']);
         add_action('woocommerce_checkout_process', [$this, 'block_by_email']);
         add_action('woocommerce_checkout_process', [$this, 'validate_company_in_name_fields']);
+        add_action('woocommerce_after_checkout_validation', [$this, 'validate_company_in_name_fields_after'], 10, 2);
         add_filter('woocommerce_available_payment_gateways', [$this, 'disable_gateways_for_ip']);
         add_filter('woocommerce_available_payment_gateways', [$this, 'disable_gateways_for_email']);
     }
@@ -623,13 +624,6 @@ class LicenceLand_Dual_Shop {
             return;
         }
 
-        // Detect whether the checkout form actually has a company field
-        $hasCompanyField = false;
-        if (function_exists('WC') && WC()->checkout()) {
-            $fields = WC()->checkout()->get_checkout_fields();
-            $hasCompanyField = isset($fields['billing']['billing_company']);
-        }
-
         $company = isset($_POST['billing_company']) ? trim((string) wp_unslash($_POST['billing_company'])) : '';
         if ($company !== '') {
             return; // Company provided, fine
@@ -676,21 +670,40 @@ class LicenceLand_Dual_Shop {
 
         foreach ($patterns as $regex) {
             if (preg_match($regex, $fullName)) {
-                if ($hasCompanyField) {
-                    wc_add_notice(
-                        __('It looks like a company name was entered into the First/Last name fields. Please put the company name in the Company field and your personal name in the name fields.', 'licenceland'),
-                        'error'
-                    );
+                wc_add_notice(
+                    __('It looks like a company name was entered into the First/Last name fields. Please enter a personal name, and put any company suffix (e.g., Kft, Bt, LLC) in the Company field.', 'licenceland'),
+                    'error'
+                );
+                break;
+            }
+        }
+    }
+
+    /**
+     * Secondary validator compatible with validation that passes an errors object
+     */
+    public function validate_company_in_name_fields_after($data, $errors) {
+        $first = isset($data['billing_first_name']) ? strtolower(trim((string) $data['billing_first_name'])) : '';
+        $last = isset($data['billing_last_name']) ? strtolower(trim((string) $data['billing_last_name'])) : '';
+        if ($first === '' && $last === '') {
+            return;
+        }
+        $company = isset($data['billing_company']) ? trim((string) $data['billing_company']) : '';
+        if ($company !== '') {
+            return;
+        }
+        $fullName = $first . ' ' . $last;
+        $patterns = [
+            '/\\bkft\\b/i','/\\bbt\\b/i','/\\bkkt\\b/i','/\\bzrt\\b/i','/\\bnyrt\\b/i','/\\bgmbh\\b/i','/\\bug\\b/i','/\\bag\\b/i','/\\bllc\\b/i','/\\binc\\b/i','/\\bltd\\b/i','/\\bplc\\b/i',
+            '/\\bs\\.\\?r\\.\\?l\\.\\?\\b/i','/\\bs\\.\\?r\\.\\?o\\.\\?\\b/i','/\\bs\\.\\?a\\.\\?\\b/i','/sp\\.\\?\\s*z\\s*o\\.\\?\\s*o\\.\\?/i',
+            '/\\bsas\\b/i','/\\bspa\\b/i','/\\boy\\b/i','/\\bas\\b/i','/\\bab\\b/i','/\\bbv\\b/i','/\\bnv\\b/i','/pte\\.\\?\\s*ltd\\.\\?/i','/pty\\.\\?\\s*ltd\\.\\?/i','/\\bcorp\\b/i','/\\bcorporation\\b/i','/\\blimited\\b/i','/\\bcompany\\b/i','/\\benterprise(s)?\\b/i','/\\bsolutions?\\b/i',
+        ];
+        foreach ($patterns as $regex) {
+            if (preg_match($regex, $fullName)) {
+                if (is_object($errors) && method_exists($errors, 'add')) {
+                    $errors->add('company_in_name', __('It looks like a company name was entered into the First/Last name fields. Please enter a personal name, and put any company suffix (e.g., Kft, Bt, LLC) in the Company field.', 'licenceland'));
                 } else {
-                    // Non-blocking notice and flag for admin review when the company field is not present
-                    wc_add_notice(
-                        __('We detected a company identifier in the name fields. We will flag this order for review since the Company field is not present.', 'licenceland'),
-                        'notice'
-                    );
-                    if (function_exists('WC') && WC()->session) {
-                        WC()->session->set('licenceland_company_in_name_detected', 1);
-                        WC()->session->set('licenceland_company_in_name_text', trim($first . ' ' . $last));
-                    }
+                    wc_add_notice(__('It looks like a company name was entered into the First/Last name fields. Please enter a personal name, and put any company suffix (e.g., Kft, Bt, LLC) in the Company field.', 'licenceland'), 'error');
                 }
                 break;
             }
