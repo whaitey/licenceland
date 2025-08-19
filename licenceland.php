@@ -80,6 +80,7 @@ require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-cd-keys.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-dual-shop.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-abandoned-cart.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-order-resend.php';
+require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-sync.php';
 
 /**
  * Main LicenceLand Plugin Class
@@ -93,6 +94,7 @@ class LicenceLand {
     public $dual_shop;
     public $abandoned_cart;
     public $order_resend;
+    public $sync;
     
     public static function get_instance() {
         if (null === self::$instance) {
@@ -121,6 +123,7 @@ class LicenceLand {
         $this->dual_shop = new LicenceLand_Dual_Shop();
         $this->abandoned_cart = new LicenceLand_Abandoned_Cart();
         $this->order_resend = new LicenceLand_Order_Resend();
+        $this->sync = new LicenceLand_Sync();
     }
     
     public function init() {
@@ -137,6 +140,7 @@ class LicenceLand {
         $this->dual_shop->init();
         $this->abandoned_cart->init();
         $this->order_resend->init();
+        $this->sync->init();
     }
     
     public function load_textdomain() {
@@ -155,6 +159,7 @@ class LicenceLand {
         $this->dual_shop->activate();
         $this->abandoned_cart->activate();
         $this->order_resend->activate();
+        $this->sync->activate();
         
         // Flush rewrite rules
         flush_rewrite_rules();

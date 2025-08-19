@@ -78,6 +78,15 @@ class LicenceLand_Settings {
             'licenceland-abandoned-cart-settings',
             [$this, 'abandoned_cart_settings_page']
         );
+
+        add_submenu_page(
+            self::MENU_SLUG,
+            __('Sync Settings', 'licenceland'),
+            __('Sync', 'licenceland'),
+            'manage_options',
+            'licenceland-sync-settings',
+            [$this, 'sync_settings_page']
+        );
         
         add_submenu_page(
             self::MENU_SLUG,
@@ -143,6 +152,13 @@ class LicenceLand_Settings {
                 return preg_replace('/[^\w\.@\-\+\_\n\r ]/', '', $value);
             },
         ]);
+
+        // Sync
+        register_setting(self::OPTION_GROUP, 'll_sync_mode');
+        register_setting(self::OPTION_GROUP, 'll_sync_site_id');
+        register_setting(self::OPTION_GROUP, 'll_sync_remote_url');
+        register_setting(self::OPTION_GROUP, 'll_sync_shared_secret');
+        register_setting(self::OPTION_GROUP, 'll_sync_products');
     }
     
     /**
@@ -510,6 +526,64 @@ class LicenceLand_Settings {
         <?php
     }
     
+    /**
+     * Sync settings page
+     */
+    public function sync_settings_page() {
+        ?>
+        <div class="wrap">
+            <h1><?php _e('Sync Settings', 'licenceland'); ?></h1>
+
+            <form method="post" action="options.php">
+                <?php settings_fields(self::OPTION_GROUP); ?>
+
+                <table class="form-table">
+                    <tr>
+                        <th><label for="ll_sync_mode"><?php _e('Mode', 'licenceland'); ?></label></th>
+                        <td>
+                            <select id="ll_sync_mode" name="ll_sync_mode">
+                                <option value="primary" <?php selected(get_option('ll_sync_mode', 'primary'), 'primary'); ?>><?php _e('Primary (push products)', 'licenceland'); ?></option>
+                                <option value="secondary" <?php selected(get_option('ll_sync_mode', 'primary'), 'secondary'); ?>><?php _e('Secondary', 'licenceland'); ?></option>
+                            </select>
+                            <p class="description"><?php _e('Primary pushes products to the remote site. Secondary primarily receives.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="ll_sync_site_id"><?php _e('This Site ID', 'licenceland'); ?></label></th>
+                        <td>
+                            <input type="text" id="ll_sync_site_id" name="ll_sync_site_id" value="<?php echo esc_attr(get_option('ll_sync_site_id', home_url())); ?>" class="regular-text" />
+                            <p class="description"><?php _e('Identifier sent in sync requests (e.g., the site URL).', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="ll_sync_remote_url"><?php _e('Remote Site URL', 'licenceland'); ?></label></th>
+                        <td>
+                            <input type="url" id="ll_sync_remote_url" name="ll_sync_remote_url" value="<?php echo esc_attr(get_option('ll_sync_remote_url', '')); ?>" class="regular-text" />
+                            <p class="description"><?php _e('Base URL of the other site (e.g., https://example.com).', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="ll_sync_shared_secret"><?php _e('Shared Secret', 'licenceland'); ?></label></th>
+                        <td>
+                            <input type="text" id="ll_sync_shared_secret" name="ll_sync_shared_secret" value="<?php echo esc_attr(get_option('ll_sync_shared_secret', '')); ?>" class="regular-text" />
+                            <p class="description"><?php _e('Used to sign sync requests (HMAC-SHA256). Keep this secret the same on both sites.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="ll_sync_products"><?php _e('Sync Products', 'licenceland'); ?></label></th>
+                        <td>
+                            <input type="checkbox" id="ll_sync_products" name="ll_sync_products" value="yes" <?php checked(get_option('ll_sync_products', 'yes'), 'yes'); ?> />
+                            <p class="description"><?php _e('When enabled on Primary, product create/update/delete pushes to Secondary.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+
+                <?php submit_button(); ?>
+            </form>
+        </div>
+        <?php
+    }
+
     private function get_default_abandoned_cart_template() {
         return '
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
