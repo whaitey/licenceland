@@ -159,6 +159,7 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'll_sync_remote_url');
         register_setting(self::OPTION_GROUP, 'll_sync_shared_secret');
         register_setting(self::OPTION_GROUP, 'll_sync_products');
+        register_setting(self::OPTION_GROUP, 'll_sync_orders');
     }
     
     /**
@@ -574,6 +575,13 @@ class LicenceLand_Settings {
                         <td>
                             <input type="checkbox" id="ll_sync_products" name="ll_sync_products" value="yes" <?php checked(get_option('ll_sync_products', 'yes'), 'yes'); ?> />
                             <p class="description"><?php _e('When enabled on Primary, product create/update/delete pushes to Secondary.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="ll_sync_orders"><?php _e('Sync Orders (Secondary → Primary)', 'licenceland'); ?></label></th>
+                        <td>
+                            <input type="checkbox" id="ll_sync_orders" name="ll_sync_orders" value="yes" <?php checked(get_option('ll_sync_orders', 'yes'), 'yes'); ?> />
+                            <p class="description"><?php _e('On Secondary site, mirror orders to Primary for CD key assignment and central visibility.', 'licenceland'); ?></p>
                         </td>
                     </tr>
                 </table>

@@ -23,6 +23,10 @@ class LicenceLand_Sync {
         add_action('save_post_product', [$this, 'maybe_push_product'], 20, 3);
         add_action('before_delete_post', [$this, 'maybe_push_product_delete'], 10, 1);
 
+        // Order push (Secondary -> Primary)
+        add_action('woocommerce_checkout_order_processed', [$this, 'maybe_push_order'], 20, 3);
+        add_action('woocommerce_new_order', [$this, 'maybe_push_order'], 20, 1);
+
         // Admin: add origin column to orders list
         add_filter('manage_edit-shop_order_columns', [$this, 'add_origin_column'], 30);
         add_action('manage_shop_order_posts_custom_column', [$this, 'render_origin_column'], 20, 2);
@@ -53,6 +57,12 @@ class LicenceLand_Sync {
             'callback' => [$this, 'route_delete_product'],
             'permission_callback' => [$this, 'verify_hmac_request'],
         ]);
+
+        register_rest_route('licenceland/v1', '/sync/order', [
+            'methods' => 'POST',
+            'callback' => [$this, 'route_sync_order'],
+            'permission_callback' => [$this, 'verify_hmac_request'],
+        ]);
     }
 
     private function get_setting(string $key, $default = '') {
@@ -65,6 +75,10 @@ class LicenceLand_Sync {
 
     private function is_products_enabled(): bool {
         return $this->get_setting('ll_sync_products', 'yes') === 'yes';
+    }
+
+    private function is_orders_enabled(): bool {
+        return $this->get_setting('ll_sync_orders', 'yes') === 'yes';
     }
 
     // HMAC verification
@@ -238,6 +252,68 @@ class LicenceLand_Sync {
         $this->send_to_remote('DELETE', $path, '');
     }
 
+    // Outbound order push from Secondary to Primary
+    public function maybe_push_order($order_id) {
+        if (self::$isSyncRequest) {
+            return;
+        }
+        if ($this->is_primary()) {
+            return; // Primary receives orders
+        }
+        if (!$this->is_orders_enabled()) {
+            return;
+        }
+        $order = wc_get_order(is_numeric($order_id) ? (int)$order_id : $order_id);
+        if (!$order) {
+            return;
+        }
+        // Avoid resending
+        if ($order->get_meta('_ll_pushed_to_primary')) {
+            return;
+        }
+
+        $payload = [
+            'origin_site' => $this->get_setting('ll_sync_site_id', home_url()),
+            'order_id' => (string)$order->get_id(),
+            'billing' => [
+                'first_name' => $order->get_billing_first_name(),
+                'last_name' => $order->get_billing_last_name(),
+                'company' => $order->get_billing_company(),
+                'address_1' => $order->get_billing_address_1(),
+                'address_2' => $order->get_billing_address_2(),
+                'city' => $order->get_billing_city(),
+                'state' => $order->get_billing_state(),
+                'postcode' => $order->get_billing_postcode(),
+                'country' => $order->get_billing_country(),
+                'email' => $order->get_billing_email(),
+                'phone' => $order->get_billing_phone(),
+            ],
+            'shipping' => [
+                'first_name' => $order->get_shipping_first_name(),
+                'last_name' => $order->get_shipping_last_name(),
+                'company' => $order->get_shipping_company(),
+                'address_1' => $order->get_shipping_address_1(),
+                'address_2' => $order->get_shipping_address_2(),
+                'city' => $order->get_shipping_city(),
+                'state' => $order->get_shipping_state(),
+                'postcode' => $order->get_shipping_postcode(),
+                'country' => $order->get_shipping_country(),
+            ],
+            'line_items' => [],
+        ];
+        foreach ($order->get_items() as $item) {
+            $product = $item->get_product();
+            if (!$product) continue;
+            $payload['line_items'][] = [
+                'sku' => (string)$product->get_sku(),
+                'quantity' => (int)$item->get_quantity(),
+            ];
+        }
+
+        $this->send_to_remote('POST', '/wp-json/licenceland/v1/sync/order', json_encode($payload));
+        $order->update_meta_data('_ll_pushed_to_primary', 1);
+        $order->save();
+    }
     private function build_product_payload(int $product_id): array {
         $product = wc_get_product($product_id);
         $keysMeta = get_post_meta($product_id, '_cd_keys', true);
@@ -314,6 +390,135 @@ class LicenceLand_Sync {
         }
         $origin = get_post_meta($post_id, '_ll_origin_site', true);
         echo esc_html($origin ?: __('Local', 'licenceland'));
+    }
+
+    // ----- Incoming order from Secondary -> create mirror order on Primary, assign/send CD keys -----
+    public function route_sync_order(WP_REST_Request $request) {
+        $data = json_decode($request->get_body(), true);
+        if (!is_array($data)) {
+            return new WP_REST_Response(['error' => 'invalid_body'], 400);
+        }
+
+        $billing = (array)($data['billing'] ?? []);
+        $shipping = (array)($data['shipping'] ?? []);
+        $items = (array)($data['line_items'] ?? []);
+        $remoteOrderId = (string)($data['order_id'] ?? '');
+        $originSite = (string)($data['origin_site'] ?? 'secondary');
+
+        if (empty($items)) {
+            return new WP_REST_Response(['error' => 'no_items'], 400);
+        }
+
+        try {
+            $order = wc_create_order();
+
+            // Add items by SKU
+            foreach ($items as $li) {
+                $sku = isset($li['sku']) ? (string)$li['sku'] : '';
+                $qty = isset($li['quantity']) ? max(1, (int)$li['quantity']) : 1;
+                if ($sku === '') {
+                    continue;
+                }
+                $productId = wc_get_product_id_by_sku($sku);
+                if (!$productId) {
+                    continue;
+                }
+                $order->add_product(wc_get_product($productId), $qty);
+            }
+
+            // Addresses
+            if (!empty($billing)) {
+                $order->set_address($billing, 'billing');
+            }
+            if (!empty($shipping)) {
+                $order->set_address($shipping, 'shipping');
+            }
+
+            $order->update_meta_data('_ll_origin_site', $originSite);
+            if ($remoteOrderId !== '') {
+                $order->update_meta_data('_ll_remote_order_id', $remoteOrderId);
+            }
+            $order->save();
+
+            // Assign CD keys per item
+            foreach ($order->get_items() as $itemId => $item) {
+                $this->assign_cd_keys_to_item($order, $itemId, $item);
+            }
+
+            // Mark processing and save
+            $order->set_status('processing');
+            $order->save();
+
+            return new WP_REST_Response(['ok' => true, 'order_id' => $order->get_id()], 200);
+        } catch (Exception $e) {
+            return new WP_REST_Response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function assign_cd_keys_to_item(WC_Order $order, $itemId, $item): void {
+        $productId = $item->get_product_id();
+        $qty = max(1, (int)$item->get_quantity());
+        $keys = get_post_meta($productId, '_cd_keys', true);
+        if (empty($keys)) {
+            $keys = [];
+        }
+        if (is_string($keys)) {
+            $keys = array_filter(array_map('trim', explode("\n", $keys)));
+        }
+        if (!is_array($keys)) {
+            $keys = (array)$keys;
+        }
+
+        $assigned = [];
+        for ($i = 0; $i < $qty; $i++) {
+            if (!empty($keys)) {
+                $assigned[] = array_shift($keys);
+            }
+        }
+        if (empty($assigned)) {
+            return;
+        }
+
+        $cdKeyValue = (count($assigned) === 1) ? $assigned[0] : implode(', ', $assigned);
+        wc_update_order_item_meta($itemId, '_cd_key', $cdKeyValue);
+        update_post_meta($productId, '_cd_keys', $keys);
+        $this->log_cd_key_usage($assigned, $productId, $order->get_id(), $itemId);
+
+        // Send email with product template
+        $this->send_cd_key_email($order, $item, $cdKeyValue);
+    }
+
+    private function send_cd_key_email(WC_Order $order, $item, string $cdKey): void {
+        $productId = $item->get_product_id();
+        $template = get_post_meta($productId, '_cd_email_template', true);
+        if ($template) {
+            $output = str_replace('{cd_key}', esc_html($cdKey), $template);
+        } else {
+            $output = sprintf(__('Your CD key: %s', 'licenceland'), esc_html($cdKey));
+        }
+        $to = $order->get_billing_email();
+        if (!$to) {
+            return;
+        }
+        $subject = sprintf(__('CD Key for Order #%s', 'licenceland'), $order->get_order_number());
+        wp_mail($to, $subject, wpautop($output));
+    }
+
+    private function log_cd_key_usage(array $keys, int $productId, int $orderId, int $orderItemId): void {
+        global $wpdb;
+        $table = $wpdb->prefix . 'licenceland_cd_keys_usage';
+        foreach ($keys as $key) {
+            $wpdb->insert(
+                $table,
+                [
+                    'cd_key' => $key,
+                    'product_id' => $productId,
+                    'order_id' => $orderId,
+                    'order_item_id' => $orderItemId,
+                ],
+                ['%s', '%d', '%d', '%d']
+            );
+        }
     }
 }
 
