@@ -69,6 +69,12 @@ class LicenceLand_Sync {
             'callback' => [$this, 'route_resend_remote_email'],
             'permission_callback' => [$this, 'verify_hmac_request'],
         ]);
+
+        register_rest_route('licenceland/v1', '/sync/settings/payments', [
+            'methods' => 'POST',
+            'callback' => [$this, 'route_update_remote_payments'],
+            'permission_callback' => [$this, 'verify_hmac_request'],
+        ]);
     }
 
     private function get_setting(string $key, $default = '') {
@@ -435,6 +441,21 @@ class LicenceLand_Sync {
         }
         $res = licenceland()->order_resend->api_resend_email($remoteOrderId, $emailType);
         return new WP_REST_Response($res, $res['success'] ? 200 : 500);
+    }
+
+    // Update payment gateway allowlists on this site (called from the controller site)
+    public function route_update_remote_payments(WP_REST_Request $request) {
+        $data = json_decode($request->get_body(), true);
+        if (!is_array($data)) {
+            return new WP_REST_Response(['error' => 'invalid_body'], 400);
+        }
+        $lak = isset($data['ds_lak_payments']) ? (array)$data['ds_lak_payments'] : [];
+        $uzl = isset($data['ds_uzl_payments']) ? (array)$data['ds_uzl_payments'] : [];
+        $lak = array_values(array_unique(array_map('sanitize_text_field', $lak)));
+        $uzl = array_values(array_unique(array_map('sanitize_text_field', $uzl)));
+        update_option('ds_lak_payments', $lak);
+        update_option('ds_uzl_payments', $uzl);
+        return new WP_REST_Response(['ok' => true], 200);
     }
 
     // Admin column: Origin

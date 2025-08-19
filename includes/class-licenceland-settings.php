@@ -340,6 +340,8 @@ class LicenceLand_Settings {
         $uzl_pay = get_option('ds_uzl_payments', []);
         $banned_ips = get_option('ds_banned_ips', '');
         $banned_emails = get_option('ds_banned_emails', '');
+        $remote_url = get_option('ll_sync_remote_url', '');
+        $shared_secret = get_option('ll_sync_shared_secret', '');
         ?>
         
         <div class="wrap">
@@ -588,7 +590,56 @@ class LicenceLand_Settings {
 
                 <?php submit_button(); ?>
             </form>
+
+            <hr>
+            <h2><?php _e('Remote Payments Control (Push to Secondary)', 'licenceland'); ?></h2>
+            <p><?php _e('Choose which payment methods should be enabled on the remote site and push the configuration.', 'licenceland'); ?></p>
+
+            <?php
+            $all_gateways = WC()->payment_gateways()->payment_gateways();
+            $lak_pay = get_option('ds_lak_payments', []);
+            $uzl_pay = get_option('ds_uzl_payments', []);
+            ?>
+            <table class="form-table">
+                <tr>
+                    <th><?php esc_html_e('Payment Method', 'licenceland'); ?></th>
+                    <th><?php esc_html_e('Consumer (Remote)', 'licenceland'); ?></th>
+                    <th><?php esc_html_e('Business (Remote)', 'licenceland'); ?></th>
+                </tr>
+                <?php foreach ($all_gateways as $id => $gw) : ?>
+                    <tr>
+                        <th><?php echo esc_html($gw->get_title()); ?> <code><?php echo esc_html($id); ?></code></th>
+                        <td><input type="checkbox" class="ll-remote-lak" value="<?php echo esc_attr($id); ?>" <?php checked(in_array($id, (array)$lak_pay, true)); ?>></td>
+                        <td><input type="checkbox" class="ll-remote-uzl" value="<?php echo esc_attr($id); ?>" <?php checked(in_array($id, (array)$uzl_pay, true)); ?>></td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+            <p>
+                <button type="button" class="button button-primary" id="ll-push-remote-payments"><?php _e('Push to Remote', 'licenceland'); ?></button>
+                <span id="ll-push-remote-payments-result" style="margin-left:10px;"></span>
+            </p>
         </div>
+
+        <script>
+        jQuery(function($){
+            $('#ll-push-remote-payments').on('click', function(){
+                var lak = [], uzl = [];
+                $('.ll-remote-lak:checked').each(function(){ lak.push($(this).val()); });
+                $('.ll-remote-uzl:checked').each(function(){ uzl.push($(this).val()); });
+                var result = $('#ll-push-remote-payments-result');
+                result.text('<?php echo esc_js(__('Pushing...', 'licenceland')); ?>').removeClass('ok err');
+                $.post(ajaxurl, {
+                    action: 'licenceland_push_remote_payments',
+                    nonce: '<?php echo wp_create_nonce('licenceland_sync'); ?>',
+                    lak: lak,
+                    uzl: uzl
+                }).done(function(resp){
+                    if (resp && resp.success) { result.text('<?php echo esc_js(__('Pushed successfully.', 'licenceland')); ?>').addClass('ok'); }
+                    else { result.text((resp && resp.data) ? resp.data : '<?php echo esc_js(__('Push failed.', 'licenceland')); ?>').addClass('err'); }
+                }).fail(function(){ result.text('<?php echo esc_js(__('Push failed.', 'licenceland')); ?>').addClass('err'); });
+            });
+        });
+        </script>
         <?php
     }
 

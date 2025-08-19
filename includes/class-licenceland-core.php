@@ -407,6 +407,7 @@ class LicenceLand_Core {
         // Add admin action to force update check
         add_action('wp_ajax_licenceland_force_update_check', [$this, 'force_update_check']);
         add_action('wp_ajax_licenceland_debug_update_checker', [$this, 'debug_update_checker']);
+        add_action('wp_ajax_licenceland_push_remote_payments', [$this, 'push_remote_payments']);
         
         // Add admin notice for update checker status
         add_action('admin_notices', [$this, 'update_checker_notice']);
@@ -591,5 +592,29 @@ class LicenceLand_Core {
         }
         
         wp_send_json_success(implode("\n", $debug_info));
+    }
+
+    /**
+     * AJAX: Push remote payment allowlists via Sync API
+     */
+    public function push_remote_payments() {
+        check_ajax_referer('licenceland_sync', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_die();
+        }
+        if (!function_exists('licenceland') || !licenceland()->sync) {
+            wp_send_json_error(__('Sync module unavailable.', 'licenceland'));
+        }
+        $lak = isset($_POST['lak']) ? array_map('sanitize_text_field', (array) $_POST['lak']) : [];
+        $uzl = isset($_POST['uzl']) ? array_map('sanitize_text_field', (array) $_POST['uzl']) : [];
+        $payload = json_encode([
+            'ds_lak_payments' => array_values(array_unique($lak)),
+            'ds_uzl_payments' => array_values(array_unique($uzl)),
+        ]);
+        $res = licenceland()->sync->send_to_remote_public('POST', '/wp-json/licenceland/v1/sync/settings/payments', $payload);
+        if ($res['ok'] ?? false) {
+            wp_send_json_success();
+        }
+        wp_send_json_error(esc_html($res['error'] ?? __('Push failed.', 'licenceland')));
     }
 }
