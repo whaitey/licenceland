@@ -433,6 +433,11 @@ class LicenceLand_Core {
         
         // Force WordPress to check for updates
         wp_update_plugins();
+
+        // Also ask the plugin update checker to run immediately
+        if (function_exists('licenceland_puc_force_check')) {
+            licenceland_puc_force_check();
+        }
         
         // Log the update check
         self::log('Manual update check triggered by admin', 'info');

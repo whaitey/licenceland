@@ -53,7 +53,7 @@ use YahnisElsts\PluginUpdateChecker\v5p6\PucFactory;
 $licencelandUpdateChecker = PucFactory::buildUpdateChecker(
     'https://github.com/whaitey/licenceland',
     __FILE__,
-    'licenceland'
+    plugin_basename(__FILE__)
 );
 
 // Configure the update checker
@@ -61,6 +61,16 @@ $licencelandUpdateChecker->setBranch('main');
 $vcsApi = $licencelandUpdateChecker->getVcsApi();
 if ($vcsApi && method_exists($vcsApi, 'enableReleaseAssets')) {
     $vcsApi->enableReleaseAssets();
+}
+
+// Helper to force an immediate PUC check when requested
+if (!function_exists('licenceland_puc_force_check')) {
+    function licenceland_puc_force_check() {
+        global $licencelandUpdateChecker;
+        if ($licencelandUpdateChecker && method_exists($licencelandUpdateChecker, 'checkForUpdates')) {
+            $licencelandUpdateChecker->checkForUpdates();
+        }
+    }
 }
 
 // Core classes - Load one by one to identify the issue
