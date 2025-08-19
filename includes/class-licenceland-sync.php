@@ -110,15 +110,30 @@ class LicenceLand_Sync {
             return false;
         }
         $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'POST';
-        $path = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+        $rawPath = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+        $route = ($request instanceof WP_REST_Request) ? (string)$request->get_route() : '';
         $body = $request instanceof WP_REST_Request ? $request->get_body() : file_get_contents('php://input');
-        $payload = $method . "\n" . $path . "\n" . $ts . "\n" . (string)$body;
-        $calc = base64_encode(hash_hmac('sha256', $payload, $secret, true));
-        if (!hash_equals($calc, $sig)) {
-            return false;
+
+        $candidates = array_values(array_unique(array_filter([
+            $rawPath,
+            '/wp-json' . $route,
+            $route,
+            '/index.php?rest_route=' . $route,
+            '/?rest_route=' . $route,
+        ])));
+
+        foreach ($candidates as $path) {
+            $payload = $method . "\n" . $path . "\n" . $ts . "\n" . (string)$body;
+            $calc = base64_encode(hash_hmac('sha256', $payload, $secret, true));
+            if (hash_equals($calc, $sig)) {
+                self::$isSyncRequest = true;
+                return true;
+            }
         }
-        self::$isSyncRequest = true;
-        return true;
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[LicenceLand Sync] HMAC verification failed for route ' . $route . ' rawPath ' . $rawPath);
+        }
+        return false;
     }
 
     private function get_header(string $name): string {
@@ -403,11 +418,19 @@ class LicenceLand_Sync {
         ];
 
         $url = $remote . $path;
+        $response = null;
         if ($method === 'POST') {
-            wp_remote_post($url, $args);
+            $response = wp_remote_post($url, $args);
         } elseif ($method === 'DELETE') {
             $args['method'] = 'DELETE';
-            wp_remote_request($url, $args);
+            $response = wp_remote_request($url, $args);
+        }
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            if (is_wp_error($response)) {
+                error_log('[LicenceLand Sync] Push ' . $method . ' ' . $url . ' failed: ' . $response->get_error_message());
+            } else if ($response) {
+                error_log('[LicenceLand Sync] Push ' . $method . ' ' . $url . ' -> ' . wp_remote_retrieve_response_code($response));
+            }
         }
     }
 
