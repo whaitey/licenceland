@@ -2,7 +2,7 @@
 /**
  * Plugin Name: LicenceLand - Unified E-commerce Solution
  * Description: Comprehensive e-commerce solution featuring CD Key management, dual shop functionality (Lakossági/Üzleti), and advanced WooCommerce integration.
- * Version: 1.0.15
+ * Version: 1.0.18
  * Author: ZeusWeb
  * Text Domain: licenceland
  * Domain Path: /languages
@@ -20,11 +20,31 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LICENCELAND_VERSION', '1.0.15');
+define('LICENCELAND_VERSION', '1.0.18');
 define('LICENCELAND_PLUGIN_FILE', __FILE__);
 define('LICENCELAND_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LICENCELAND_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('LICENCELAND_PLUGIN_BASENAME', plugin_basename(__FILE__));
+
+// Fallback for Parsedown (used by update checker to render changelogs)
+if (!class_exists('Parsedown')) {
+    class Parsedown {
+        public static function instance() {
+            static $instance = null;
+            if ($instance === null) {
+                $instance = new self();
+            }
+            return $instance;
+        }
+        public function text($markdown) {
+            // Minimal fallback: escape and auto-paragraph
+            if (function_exists('wpautop')) {
+                return wpautop(esc_html((string) $markdown));
+            }
+            return nl2br(htmlspecialchars((string) $markdown, ENT_QUOTES, 'UTF-8'));
+        }
+    }
+}
 
 // Plugin Update Checker
 require_once __DIR__ . '/load-v5p6.php';
@@ -38,22 +58,16 @@ $licencelandUpdateChecker = PucFactory::buildUpdateChecker(
 
 // Configure the update checker
 $licencelandUpdateChecker->setBranch('main');
-$licencelandUpdateChecker->getVcsApi()->enableReleaseAssets();
+$vcsApi = $licencelandUpdateChecker->getVcsApi();
+if ($vcsApi && method_exists($vcsApi, 'enableReleaseAssets')) {
+    $vcsApi->enableReleaseAssets();
+}
 
-// Set custom update checker options
-$licencelandUpdateChecker->setCheckPeriod(6); // Check every 6 hours for faster detection
-
-// Add custom headers for better GitHub API compatibility
-$licencelandUpdateChecker->getVcsApi()->setHttpFilter(function($url, $options) {
-    $options['headers']['User-Agent'] = 'LicenceLand-Plugin-Update-Checker/1.0';
-    return $options;
-});
-
-// Core classes
+// Core classes - Load one by one to identify the issue
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-core.php';
+require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-settings.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-cd-keys.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-dual-shop.php';
-require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-settings.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-abandoned-cart.php';
 require_once LICENCELAND_PLUGIN_DIR . 'includes/class-licenceland-order-resend.php';
 
@@ -64,9 +78,9 @@ class LicenceLand {
     
     private static $instance = null;
     public $core;
+    public $settings;
     public $cd_keys;
     public $dual_shop;
-    public $settings;
     public $abandoned_cart;
     public $order_resend;
     
@@ -92,9 +106,9 @@ class LicenceLand {
     private function load_components() {
         // Initialize core components
         $this->core = new LicenceLand_Core();
+        $this->settings = new LicenceLand_Settings();
         $this->cd_keys = new LicenceLand_CD_Keys();
         $this->dual_shop = new LicenceLand_Dual_Shop();
-        $this->settings = new LicenceLand_Settings();
         $this->abandoned_cart = new LicenceLand_Abandoned_Cart();
         $this->order_resend = new LicenceLand_Order_Resend();
     }
@@ -108,9 +122,9 @@ class LicenceLand {
         
         // Initialize components
         $this->core->init();
+        $this->settings->init();
         $this->cd_keys->init();
         $this->dual_shop->init();
-        $this->settings->init();
         $this->abandoned_cart->init();
         $this->order_resend->init();
     }
@@ -126,9 +140,9 @@ class LicenceLand {
     public function activate() {
         // Create necessary database tables and options
         $this->core->activate();
+        $this->settings->activate();
         $this->cd_keys->activate();
         $this->dual_shop->activate();
-        $this->settings->activate();
         $this->abandoned_cart->activate();
         $this->order_resend->activate();
         

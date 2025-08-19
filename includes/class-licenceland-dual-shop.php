@@ -28,7 +28,7 @@ class LicenceLand_Dual_Shop {
         add_filter('woocommerce_product_query', [$this, 'filter_products_by_shop_type']);
         add_action('template_redirect', [$this, 'check_product_availability']);
         add_filter('woocommerce_add_to_cart_validation', [$this, 'validate_cart_item_availability'], 10, 2);
-        add_action('woocommerce_check_cart_items', [$this, 'check_cart_compatibility']);
+        add_action('woocommerce_check_cart_items', [$this, 'check_cart_items']);
         
         // Pricing
         add_action('woocommerce_product_options_pricing', [$this, 'add_business_price_field']);
@@ -71,6 +71,7 @@ class LicenceLand_Dual_Shop {
         // IP blocking
         add_action('woocommerce_checkout_process', [$this, 'block_by_ip']);
         add_action('woocommerce_checkout_process', [$this, 'block_by_email']);
+        add_action('woocommerce_checkout_process', [$this, 'validate_company_in_name_fields']);
         add_filter('woocommerce_available_payment_gateways', [$this, 'disable_gateways_for_ip']);
         add_filter('woocommerce_available_payment_gateways', [$this, 'disable_gateways_for_email']);
     }
@@ -357,6 +358,18 @@ class LicenceLand_Dual_Shop {
         // Store customer IP
         $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'no_ip';
         $order->update_meta_data('_ds_customer_ip', $ip);
+
+        // Persist fraud/company-in-name flag from session (when no company field present)
+        if (function_exists('WC') && WC()->session && WC()->session->get('licenceland_company_in_name_detected')) {
+            $order->update_meta_data('_ds_company_in_name_flag', '1');
+            $nameText = WC()->session->get('licenceland_company_in_name_text');
+            if (!empty($nameText)) {
+                $order->update_meta_data('_ds_company_in_name_text', $nameText);
+            }
+            $order->add_order_note(__('Company identifier detected in billing name fields at checkout (no company field).', 'licenceland'));
+            WC()->session->__unset('licenceland_company_in_name_detected');
+            WC()->session->__unset('licenceland_company_in_name_text');
+        }
         
         $order->save();
     }
@@ -599,6 +612,89 @@ class LicenceLand_Dual_Shop {
         }
         
         return $gateways;
+    }
+
+    /**
+     * Validate that company identifiers are not placed in name fields when company field is empty
+     */
+    public function validate_company_in_name_fields() {
+        // Only run on checkout submission
+        if (!isset($_POST['billing_first_name']) || !isset($_POST['billing_last_name'])) {
+            return;
+        }
+
+        // Detect whether the checkout form actually has a company field
+        $hasCompanyField = false;
+        if (function_exists('WC') && WC()->checkout()) {
+            $fields = WC()->checkout()->get_checkout_fields();
+            $hasCompanyField = isset($fields['billing']['billing_company']);
+        }
+
+        $company = isset($_POST['billing_company']) ? trim((string) wp_unslash($_POST['billing_company'])) : '';
+        if ($company !== '') {
+            return; // Company provided, fine
+        }
+
+        $first = strtolower(trim((string) wp_unslash($_POST['billing_first_name'])));
+        $last = strtolower(trim((string) wp_unslash($_POST['billing_last_name'])));
+        $fullName = $first . ' ' . $last;
+
+        // Common company identifiers (Hungarian + international)
+        $patterns = [
+            '/\\bkft\\b/i',
+            '/\\bbt\\b/i',
+            '/\\bkkt\\b/i',
+            '/\\bzrt\\b/i',
+            '/\\bnyrt\\b/i',
+            '/\\bgmbh\\b/i',
+            '/\\bug\\b/i',
+            '/\\bag\\b/i',
+            '/\\bllc\\b/i',
+            '/\\binc\\b/i',
+            '/\\bltd\\b/i',
+            '/\\bplc\\b/i',
+            '/\\bs\\.\\?r\\.\\?l\\.\\?\\b/i',
+            '/\\bs\\.\\?r\\.\\?o\\.\\?\\b/i',
+            '/\\bs\\.\\?a\\.\\?\\b/i',
+            '/sp\\.\\?\\s*z\\s*o\\.\\?\\s*o\\.\\?/i',
+            '/\\bsas\\b/i',
+            '/\\bspa\\b/i',
+            '/\\boy\\b/i',
+            '/\\bas\\b/i',
+            '/\\bab\\b/i',
+            '/\\bbv\\b/i',
+            '/\\bnv\\b/i',
+            '/pte\\.\\?\\s*ltd\\.\\?/i',
+            '/pty\\.\\?\\s*ltd\\.\\?/i',
+            '/\\bcorp\\b/i',
+            '/\\bcorporation\\b/i',
+            '/\\blimited\\b/i',
+            '/\\bcompany\\b/i',
+            '/\\benterprise(s)?\\b/i',
+            '/\\bsolutions?\\b/i',
+        ];
+
+        foreach ($patterns as $regex) {
+            if (preg_match($regex, $fullName)) {
+                if ($hasCompanyField) {
+                    wc_add_notice(
+                        __('It looks like a company name was entered into the First/Last name fields. Please put the company name in the Company field and your personal name in the name fields.', 'licenceland'),
+                        'error'
+                    );
+                } else {
+                    // Non-blocking notice and flag for admin review when the company field is not present
+                    wc_add_notice(
+                        __('We detected a company identifier in the name fields. We will flag this order for review since the Company field is not present.', 'licenceland'),
+                        'notice'
+                    );
+                    if (function_exists('WC') && WC()->session) {
+                        WC()->session->set('licenceland_company_in_name_detected', 1);
+                        WC()->session->set('licenceland_company_in_name_text', trim($first . ' ' . $last));
+                    }
+                }
+                break;
+            }
+        }
     }
     
     /**
