@@ -191,6 +191,20 @@ class LicenceLand_Sync {
             update_post_meta($product_id, '_cd_email_template', wp_kses_post((string)$data['cd_email_template']));
         }
 
+        // Taxonomies: categories and tags (accept slugs)
+        if (!empty($data['categories']) && is_array($data['categories'])) {
+            $cats = array_filter(array_map('sanitize_title', $data['categories']));
+            if (!empty($cats)) {
+                wp_set_object_terms($product_id, $cats, 'product_cat');
+            }
+        }
+        if (!empty($data['tags']) && is_array($data['tags'])) {
+            $tags = array_filter(array_map('sanitize_title', $data['tags']));
+            if (!empty($tags)) {
+                wp_set_object_terms($product_id, $tags, 'product_tag');
+            }
+        }
+
         // Origin markers
         if (!empty($data['origin_site'])) {
             update_post_meta($product_id, '_ll_origin_site', sanitize_text_field((string)$data['origin_site']));
@@ -334,6 +348,12 @@ class LicenceLand_Sync {
         }
         $cdKeysCount = is_array($keysMeta) ? count($keysMeta) : 0;
 
+        // Terms (by slug)
+        $cat_terms = wp_get_post_terms($product_id, 'product_cat', ['fields' => 'all']);
+        $cat_slugs = array_values(array_unique(array_map(function($t){ return (string)$t->slug; }, is_array($cat_terms) ? $cat_terms : [])));
+        $tag_terms = wp_get_post_terms($product_id, 'product_tag', ['fields' => 'all']);
+        $tag_slugs = array_values(array_unique(array_map(function($t){ return (string)$t->slug; }, is_array($tag_terms) ? $tag_terms : [])));
+
         $payload = [
             'origin_site' => $this->get_setting('ll_sync_site_id', home_url()),
             'origin_id' => (string)$product_id,
@@ -352,6 +372,9 @@ class LicenceLand_Sync {
             'cd_key_stock_threshold' => (int) get_post_meta($product_id, '_cd_key_stock_threshold', true),
             'cd_key_auto_assign' => (string) (get_post_meta($product_id, '_cd_key_auto_assign', true) ?: 'yes'),
             'cd_email_template' => (string) get_post_meta($product_id, '_cd_email_template', true),
+            // Taxonomies
+            'categories' => $cat_slugs,
+            'tags' => $tag_slugs,
         ];
         return $payload;
     }
