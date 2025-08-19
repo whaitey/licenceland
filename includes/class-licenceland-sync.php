@@ -154,6 +154,17 @@ class LicenceLand_Sync {
             update_post_meta($product_id, '_stock_status', ((int)$data['stock_quantity'] > 0) ? 'instock' : 'outofstock');
         }
 
+        // CD Keys related meta (do not sync actual keys for security)
+        if (isset($data['cd_key_stock_threshold'])) {
+            update_post_meta($product_id, '_cd_key_stock_threshold', (int)$data['cd_key_stock_threshold']);
+        }
+        if (isset($data['cd_key_auto_assign'])) {
+            update_post_meta($product_id, '_cd_key_auto_assign', ($data['cd_key_auto_assign'] === 'yes') ? 'yes' : 'no');
+        }
+        if (isset($data['cd_email_template'])) {
+            update_post_meta($product_id, '_cd_email_template', wp_kses_post((string)$data['cd_email_template']));
+        }
+
         // Origin markers
         if (!empty($data['origin_site'])) {
             update_post_meta($product_id, '_ll_origin_site', sanitize_text_field((string)$data['origin_site']));
@@ -229,6 +240,12 @@ class LicenceLand_Sync {
 
     private function build_product_payload(int $product_id): array {
         $product = wc_get_product($product_id);
+        $keysMeta = get_post_meta($product_id, '_cd_keys', true);
+        if (is_string($keysMeta)) {
+            $keysMeta = array_filter(array_map('trim', explode("\n", $keysMeta)));
+        }
+        $cdKeysCount = is_array($keysMeta) ? count($keysMeta) : 0;
+
         $payload = [
             'origin_site' => $this->get_setting('ll_sync_site_id', home_url()),
             'origin_id' => (string)$product_id,
@@ -240,7 +257,13 @@ class LicenceLand_Sync {
             'short_description' => (string)get_post_field('post_excerpt', $product_id),
             'regular_price' => $product->get_regular_price(),
             'sale_price' => $product->get_sale_price(),
-            'stock_quantity' => $product->get_stock_quantity(),
+            // Expose stock as remaining CD keys if available; fallback to Woo stock
+            'stock_quantity' => ($cdKeysCount > 0) ? $cdKeysCount : $product->get_stock_quantity(),
+            // CD Keys config (no raw keys)
+            'cd_keys_count' => $cdKeysCount,
+            'cd_key_stock_threshold' => (int) get_post_meta($product_id, '_cd_key_stock_threshold', true),
+            'cd_key_auto_assign' => (string) (get_post_meta($product_id, '_cd_key_auto_assign', true) ?: 'yes'),
+            'cd_email_template' => (string) get_post_meta($product_id, '_cd_email_template', true),
         ];
         return $payload;
     }
