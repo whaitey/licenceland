@@ -142,14 +142,16 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'ds_banned_ips', [
             'type' => 'string',
             'sanitize_callback' => function($value) {
-                return preg_replace('/[^\d\.\:\n\r ]/', '', $value);
+                $str = is_scalar($value) ? (string)$value : '';
+                return preg_replace('/[^\d\.\:\n\r ]/', '', $str);
             },
         ]);
         
         register_setting(self::OPTION_GROUP, 'ds_banned_emails', [
             'type' => 'string',
             'sanitize_callback' => function($value) {
-                return preg_replace('/[^\w\.@\-\+\_\n\r ]/', '', $value);
+                $str = is_scalar($value) ? (string)$value : '';
+                return preg_replace('/[^\w\.@\-\+\_\n\r ]/', '', $str);
             },
         ]);
 
