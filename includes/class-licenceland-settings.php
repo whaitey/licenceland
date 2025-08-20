@@ -103,27 +103,52 @@ class LicenceLand_Settings {
      */
     public function register_settings() {
         // General settings
-        register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_enabled');
-        register_setting(self::OPTION_GROUP, 'licenceland_dual_shop_enabled');
-        register_setting(self::OPTION_GROUP, 'licenceland_default_shop_type');
-        register_setting(self::OPTION_GROUP, 'licenceland_payment_based_orders');
-        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_enabled');
-        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_reminder_delay');
-        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_max_reminders');
-        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_subject');
-        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_template');
+        $yesNoKeep = function(string $name, string $def){
+            return function($v) use ($name, $def){
+                if ($v === null || $v === '') { return get_option($name, $def); }
+                $s = is_scalar($v)?(string)$v:''; return ($s==='yes')?'yes':'no';
+            };
+        };
+        $intKeep = function(string $name, int $def){
+            return function($v) use ($name, $def){
+                if ($v === null || $v === '') { return (int) get_option($name, $def); }
+                return max(0, (int)$v);
+            };
+        };
+        $textKeep = function(string $name, string $def){
+            return function($v) use ($name, $def){
+                if ($v === null) { return (string) get_option($name, $def); }
+                return sanitize_text_field(is_scalar($v)?(string)$v:'');
+            };
+        };
+        $htmlKeep = function(string $name, string $def){
+            return function($v) use ($name, $def){
+                if ($v === null) { return (string) get_option($name, $def); }
+                return wp_kses_post(is_scalar($v)?(string)$v:'');
+            };
+        };
+
+        register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_enabled', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('licenceland_cd_keys_enabled','yes'), 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_dual_shop_enabled', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('licenceland_dual_shop_enabled','yes'), 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_default_shop_type', [ 'type'=>'string', 'sanitize_callback'=>function($v){ $s=is_scalar($v)?(string)$v:''; return in_array($s,['lakossagi','uzleti'],true)?$s:'lakossagi'; }, 'default'=>'lakossagi' ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_payment_based_orders', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('licenceland_payment_based_orders','yes'), 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_enabled', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('licenceland_abandoned_cart_enabled','yes'), 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_reminder_delay', [ 'type'=>'integer', 'sanitize_callback'=>$intKeep('licenceland_abandoned_cart_reminder_delay',24), 'default'=>24 ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_max_reminders', [ 'type'=>'integer', 'sanitize_callback'=>$intKeep('licenceland_abandoned_cart_max_reminders',3), 'default'=>3 ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_subject', [ 'type'=>'string', 'sanitize_callback'=>$textKeep('licenceland_abandoned_cart_email_subject',__('You left something in your cart!','licenceland')), 'default'=>__('You left something in your cart!','licenceland') ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_template', [ 'type'=>'string', 'sanitize_callback'=>$htmlKeep('licenceland_abandoned_cart_email_template',$this->get_default_abandoned_cart_template()), 'default'=>$this->get_default_abandoned_cart_template() ]);
         
         // CD Keys settings
-        register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_default_threshold');
-        register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_auto_assign_default');
+        register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_default_threshold', [ 'type'=>'integer', 'sanitize_callback'=>$intKeep('licenceland_cd_keys_default_threshold',5), 'default'=>5 ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_auto_assign_default', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('licenceland_cd_keys_auto_assign_default','yes'), 'default'=>'yes' ]);
         
         // Dual Shop settings
-        register_setting(self::OPTION_GROUP, 'ds_lak_header_id');
-        register_setting(self::OPTION_GROUP, 'ds_uzl_header_id');
-        register_setting(self::OPTION_GROUP, 'ds_lak_footer_id');
-        register_setting(self::OPTION_GROUP, 'ds_uzl_footer_id');
-        register_setting(self::OPTION_GROUP, 'ds_lak_product_id');
-        register_setting(self::OPTION_GROUP, 'ds_uzl_product_id');
+        register_setting(self::OPTION_GROUP, 'ds_lak_header_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting(self::OPTION_GROUP, 'ds_uzl_header_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting(self::OPTION_GROUP, 'ds_lak_footer_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting(self::OPTION_GROUP, 'ds_uzl_footer_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting(self::OPTION_GROUP, 'ds_lak_product_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting(self::OPTION_GROUP, 'ds_uzl_product_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
         
         register_setting(self::OPTION_GROUP, 'ds_lak_payments', [
             'type' => 'array',
