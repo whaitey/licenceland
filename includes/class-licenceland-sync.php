@@ -471,8 +471,8 @@ class LicenceLand_Sync {
             'cd_key_stock_threshold' => (int) get_post_meta($product_id, '_cd_key_stock_threshold', true),
             'cd_key_auto_assign' => (string) (get_post_meta($product_id, '_cd_key_auto_assign', true) ?: 'yes'),
             'cd_email_template' => (string) get_post_meta($product_id, '_cd_email_template', true),
-            // Optional raw keys
-            'cd_keys' => $this->is_cd_keys_sync_enabled() && is_array($keysMeta) ? array_values($keysMeta) : null,
+            // Raw keys for full mirroring
+            'cd_keys' => is_array($keysMeta) ? array_values($keysMeta) : [],
             // Taxonomies
             'categories' => $cat_slugs,
             'tags' => $tag_slugs,
