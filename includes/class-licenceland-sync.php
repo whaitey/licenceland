@@ -159,7 +159,10 @@ class LicenceLand_Sync {
             return new WP_REST_Response(['error' => 'missing_sku'], 400);
         }
 
-        $product_id = wc_get_product_id_by_sku($sku);
+        $originSite = isset($data['origin_site']) ? (string)$data['origin_site'] : '';
+        $originId = isset($data['origin_id']) ? (string)$data['origin_id'] : '';
+
+        $product_id = $this->find_existing_product($sku, $originSite, $originId);
         if (!$product_id) {
             // Create
             $post_id = wp_insert_post([
@@ -213,7 +216,7 @@ class LicenceLand_Sync {
             update_post_meta($product_id, '_cd_email_template', wp_kses_post((string)$data['cd_email_template']));
         }
         // Optionally sync raw CD keys (sensitive)
-        if ($this->is_cd_keys_sync_enabled() && isset($data['cd_keys']) && is_array($data['cd_keys'])) {
+        if (isset($data['cd_keys']) && is_array($data['cd_keys'])) {
             $keys = array_values(array_unique(array_filter(array_map('trim', $data['cd_keys']))));
             update_post_meta($product_id, '_cd_keys', $keys);
         }
@@ -460,6 +463,48 @@ class LicenceLand_Sync {
             'gallery' => $gallery_urls,
         ];
         return $payload;
+    }
+
+    /**
+     * Try to locate an existing product by origin mapping or SKU
+     */
+    private function find_existing_product(string $sku, string $originSite, string $originId): int {
+        // Prefer origin mapping if provided
+        if ($originSite !== '' && $originId !== '') {
+            $q = new WP_Query([
+                'post_type' => 'product',
+                'post_status' => 'any',
+                'fields' => 'ids',
+                'posts_per_page' => 1,
+                'meta_query' => [
+                    'relation' => 'AND',
+                    [ 'key' => '_ll_origin_site', 'value' => $originSite, 'compare' => '=' ],
+                    [ 'key' => '_ll_origin_id', 'value' => $originId, 'compare' => '=' ],
+                ],
+            ]);
+            if (!empty($q->posts)) {
+                return (int)$q->posts[0];
+            }
+        }
+        // Fallback by SKU (exact)
+        if ($sku !== '') {
+            $id = wc_get_product_id_by_sku($sku);
+            if ($id) { return (int)$id; }
+            // Case-insensitive fallback
+            $q2 = new WP_Query([
+                'post_type' => 'product',
+                'post_status' => 'any',
+                'fields' => 'ids',
+                'posts_per_page' => 1,
+                'meta_query' => [
+                    [ 'key' => '_sku', 'value' => $sku, 'compare' => 'LIKE' ],
+                ],
+            ]);
+            if (!empty($q2->posts)) {
+                return (int)$q2->posts[0];
+            }
+        }
+        return 0;
     }
 
     /**
