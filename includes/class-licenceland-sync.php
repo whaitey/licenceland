@@ -220,6 +220,26 @@ class LicenceLand_Sync {
             }
         }
 
+        // Images: featured and gallery (sideload from absolute URLs)
+        if (!empty($data['featured_image'])) {
+            $featured_id = $this->sideload_image_by_url((string)$data['featured_image'], $product_id);
+            if ($featured_id) {
+                set_post_thumbnail($product_id, $featured_id);
+                update_post_meta($product_id, '_ll_featured_src', esc_url_raw((string)$data['featured_image']));
+            }
+        }
+        if (!empty($data['gallery']) && is_array($data['gallery'])) {
+            $ids = [];
+            foreach ($data['gallery'] as $imgUrl) {
+                $aid = $this->sideload_image_by_url((string)$imgUrl, $product_id);
+                if ($aid) { $ids[] = $aid; }
+            }
+            if (!empty($ids)) {
+                update_post_meta($product_id, '_product_image_gallery', implode(',', array_map('intval', $ids)));
+                update_post_meta($product_id, '_ll_gallery_srcs', array_map('esc_url_raw', $data['gallery']));
+            }
+        }
+
         // Origin markers
         if (!empty($data['origin_site'])) {
             update_post_meta($product_id, '_ll_origin_site', sanitize_text_field((string)$data['origin_site']));
@@ -369,6 +389,17 @@ class LicenceLand_Sync {
         $tag_terms = wp_get_post_terms($product_id, 'product_tag', ['fields' => 'all']);
         $tag_slugs = array_values(array_unique(array_map(function($t){ return (string)$t->slug; }, is_array($tag_terms) ? $tag_terms : [])));
 
+        $product = wc_get_product($product_id);
+        // Images for payload
+        $featured_id = $product ? $product->get_image_id() : 0;
+        $featured_url = $featured_id ? wp_get_attachment_url($featured_id) : '';
+        $gallery_ids = $product ? $product->get_gallery_image_ids() : [];
+        $gallery_urls = [];
+        foreach ((array)$gallery_ids as $gid) {
+            $u = wp_get_attachment_url($gid);
+            if ($u) { $gallery_urls[] = $u; }
+        }
+
         $payload = [
             'origin_site' => $this->get_setting('ll_sync_site_id', home_url()),
             'origin_id' => (string)$product_id,
@@ -390,8 +421,39 @@ class LicenceLand_Sync {
             // Taxonomies
             'categories' => $cat_slugs,
             'tags' => $tag_slugs,
+            // Images
+            'featured_image' => $featured_url,
+            'gallery' => $gallery_urls,
         ];
         return $payload;
+    }
+
+    /**
+     * Download and attach an image by URL, return attachment ID or 0
+     */
+    private function sideload_image_by_url(string $url, int $post_id): int {
+        if ($url === '') { return 0; }
+        // Avoid re-download if previously set
+        $prev = get_post_meta($post_id, '_ll_featured_src', true);
+        if ($prev === $url) {
+            $thumb = get_post_thumbnail_id($post_id);
+            if ($thumb) { return (int)$thumb; }
+        }
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        // media_sideload_image can return ID when context is 'id'
+        $attach_id = 0;
+        // Some WP versions: media_sideload_image($url, $post_id, null, 'id')
+        $result = @media_sideload_image($url, $post_id, null, 'id');
+        if (is_wp_error($result)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[LicenceLand Sync] Failed to sideload image: ' . $url . ' - ' . $result->get_error_message());
+            }
+            return 0;
+        }
+        $attach_id = is_numeric($result) ? (int)$result : 0;
+        return $attach_id;
     }
 
     private function send_to_remote(string $method, string $path, string $body): void {
