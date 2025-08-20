@@ -27,6 +27,9 @@ class LicenceLand_Sync {
         add_action('woocommerce_checkout_order_processed', [$this, 'maybe_push_order'], 20, 3);
         add_action('woocommerce_new_order', [$this, 'maybe_push_order'], 20, 1);
 
+        // Push CD key changes immediately (Primary only)
+        add_action('updated_post_meta', [$this, 'maybe_push_keys_on_change'], 10, 4);
+
         // Admin: add origin column to orders list
         add_filter('manage_edit-shop_order_columns', [$this, 'add_origin_column'], 30);
         add_action('manage_shop_order_posts_custom_column', [$this, 'render_origin_column'], 20, 2);
@@ -299,8 +302,7 @@ class LicenceLand_Sync {
             return; // Only sync products with SKU identity
         }
 
-        $payload = $this->build_product_payload($post_id);
-        $this->send_to_remote('POST', '/wp-json/licenceland/v1/sync/product', json_encode($payload));
+        $this->push_product($post_id);
     }
 
     public function maybe_push_product_delete($post_id) {
@@ -320,6 +322,27 @@ class LicenceLand_Sync {
         }
         $path = '/wp-json/licenceland/v1/sync/product/' . rawurlencode($sku);
         $this->send_to_remote('DELETE', $path, '');
+    }
+
+    // If the CD keys meta changes on Primary, push the product payload (if allowed)
+    public function maybe_push_keys_on_change($meta_id, $object_id, $meta_key, $_meta_value) {
+        if (self::$isSyncRequest) {
+            return;
+        }
+        if (!$this->is_primary()) {
+            return;
+        }
+        if ($meta_key !== '_cd_keys' && $meta_key !== '_cd_email_template' && $meta_key !== '_cd_key_stock_threshold' && $meta_key !== '_cd_key_auto_assign') {
+            return;
+        }
+        // Only push if toggled on (raw keys or at least config)
+        if ($meta_key === '_cd_keys' && !$this->is_cd_keys_sync_enabled()) {
+            return;
+        }
+        $post = get_post($object_id);
+        if ($post && $post->post_type === 'product') {
+            $this->push_product((int)$object_id);
+        }
     }
 
     // Outbound order push from Secondary to Primary
@@ -505,6 +528,14 @@ class LicenceLand_Sync {
                 error_log('[LicenceLand Sync] Push ' . $method . ' ' . $url . ' -> ' . wp_remote_retrieve_response_code($response));
             }
         }
+    }
+
+    private function push_product(int $product_id): void {
+        if (!$this->is_primary() || !$this->is_products_enabled()) {
+            return;
+        }
+        $payload = json_encode($this->build_product_payload($product_id));
+        $this->send_to_remote('POST', '/wp-json/licenceland/v1/sync/product', (string)$payload);
     }
 
     // Public wrapper returning response body/ok for AJAX proxy needs
