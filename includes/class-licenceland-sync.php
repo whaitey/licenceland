@@ -327,9 +327,7 @@ class LicenceLand_Sync {
         if (self::$isSyncRequest) {
             return;
         }
-        if ($this->is_primary()) {
-            return; // Primary receives orders
-        }
+        // Both roles can mirror orders to the other site for visibility.
         if (!$this->is_orders_enabled()) {
             return;
         }
@@ -345,6 +343,8 @@ class LicenceLand_Sync {
         $payload = [
             'origin_site' => $this->get_setting('ll_sync_site_id', home_url()),
             'order_id' => (string)$order->get_id(),
+            // Assign keys only when Secondary pushes to Primary. If we're Primary pushing to Secondary, set false for visibility-only mirror.
+            'assign_keys' => $this->is_primary() ? false : true,
             'billing' => [
                 'first_name' => $order->get_billing_first_name(),
                 'last_name' => $order->get_billing_last_name(),
@@ -641,9 +641,12 @@ class LicenceLand_Sync {
             }
             $order->save();
 
-            // Assign CD keys per item
-            foreach ($order->get_items() as $itemId => $item) {
-                $this->assign_cd_keys_to_item($order, $itemId, $item);
+            // Assign CD keys if requested (e.g., Secondary -> Primary). Skip for visibility-only mirrors.
+            $shouldAssignKeys = !empty($data['assign_keys']);
+            if ($shouldAssignKeys) {
+                foreach ($order->get_items() as $itemId => $item) {
+                    $this->assign_cd_keys_to_item($order, $itemId, $item);
+                }
             }
 
             // Mark processing and save
