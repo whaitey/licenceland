@@ -156,13 +156,26 @@ class LicenceLand_Settings {
         ]);
 
         // Sync
-        register_setting(self::OPTION_GROUP, 'll_sync_mode');
-        register_setting(self::OPTION_GROUP, 'll_sync_site_id');
-        register_setting(self::OPTION_GROUP, 'll_sync_remote_url');
-        register_setting(self::OPTION_GROUP, 'll_sync_shared_secret');
-        register_setting(self::OPTION_GROUP, 'll_sync_products');
-        register_setting(self::OPTION_GROUP, 'll_sync_orders');
-        register_setting(self::OPTION_GROUP, 'll_sync_cd_keys');
+        register_setting(self::OPTION_GROUP, 'll_sync_mode', [
+            'type' => 'string',
+            'sanitize_callback' => function($v){ $s = is_scalar($v)?(string)$v:''; return in_array($s, ['primary','secondary'], true)?$s:'primary'; }
+        ]);
+        register_setting(self::OPTION_GROUP, 'll_sync_site_id', [
+            'type' => 'string',
+            'sanitize_callback' => function($v){ return sanitize_text_field(is_scalar($v)?(string)$v:''); }
+        ]);
+        register_setting(self::OPTION_GROUP, 'll_sync_remote_url', [
+            'type' => 'string',
+            'sanitize_callback' => function($v){ return esc_url_raw(is_scalar($v)?(string)$v:''); }
+        ]);
+        register_setting(self::OPTION_GROUP, 'll_sync_shared_secret', [
+            'type' => 'string',
+            'sanitize_callback' => function($v){ return sanitize_text_field(is_scalar($v)?(string)$v:''); }
+        ]);
+        $yesNo = function($v){ $s = is_scalar($v)?(string)$v:''; return ($s==='yes')?'yes':'no'; };
+        register_setting(self::OPTION_GROUP, 'll_sync_products', [ 'type'=>'string', 'sanitize_callback'=>$yesNo, 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'll_sync_orders', [ 'type'=>'string', 'sanitize_callback'=>$yesNo, 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'll_sync_cd_keys', [ 'type'=>'string', 'sanitize_callback'=>$yesNo, 'default'=>'no' ]);
     }
     
     /**
