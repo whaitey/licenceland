@@ -172,10 +172,19 @@ class LicenceLand_Settings {
             'type' => 'string',
             'sanitize_callback' => function($v){ return sanitize_text_field(is_scalar($v)?(string)$v:''); }
         ]);
-        $yesNo = function($v){ $s = is_scalar($v)?(string)$v:''; return ($s==='yes')?'yes':'no'; };
-        register_setting(self::OPTION_GROUP, 'll_sync_products', [ 'type'=>'string', 'sanitize_callback'=>$yesNo, 'default'=>'yes' ]);
-        register_setting(self::OPTION_GROUP, 'll_sync_orders', [ 'type'=>'string', 'sanitize_callback'=>$yesNo, 'default'=>'yes' ]);
-        register_setting(self::OPTION_GROUP, 'll_sync_cd_keys', [ 'type'=>'string', 'sanitize_callback'=>$yesNo, 'default'=>'no' ]);
+        $yesNoKeep = function(string $name, string $def){
+            return function($v) use ($name, $def){
+                if ($v === null || $v === '') {
+                    // Keep previous value if field not present in submission
+                    return get_option($name, $def);
+                }
+                $s = is_scalar($v) ? (string)$v : '';
+                return ($s === 'yes') ? 'yes' : 'no';
+            };
+        };
+        register_setting(self::OPTION_GROUP, 'll_sync_products', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_products','yes'), 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'll_sync_orders', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_orders','yes'), 'default'=>'yes' ]);
+        register_setting(self::OPTION_GROUP, 'll_sync_cd_keys', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_cd_keys','no'), 'default'=>'no' ]);
     }
     
     /**
