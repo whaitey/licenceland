@@ -162,15 +162,30 @@ class LicenceLand_Settings {
         ]);
         register_setting(self::OPTION_GROUP, 'll_sync_site_id', [
             'type' => 'string',
-            'sanitize_callback' => function($v){ return sanitize_text_field(is_scalar($v)?(string)$v:''); }
+            'sanitize_callback' => function($v){
+                if ($v === null || $v === '') {
+                    return get_option('ll_sync_site_id', home_url());
+                }
+                return sanitize_text_field(is_scalar($v)?(string)$v:'');
+            }
         ]);
         register_setting(self::OPTION_GROUP, 'll_sync_remote_url', [
             'type' => 'string',
-            'sanitize_callback' => function($v){ return esc_url_raw(is_scalar($v)?(string)$v:''); }
+            'sanitize_callback' => function($v){
+                if ($v === null || $v === '') {
+                    return get_option('ll_sync_remote_url', '');
+                }
+                return esc_url_raw(is_scalar($v)?(string)$v:'');
+            }
         ]);
         register_setting(self::OPTION_GROUP, 'll_sync_shared_secret', [
             'type' => 'string',
-            'sanitize_callback' => function($v){ return sanitize_text_field(is_scalar($v)?(string)$v:''); }
+            'sanitize_callback' => function($v){
+                if ($v === null || $v === '') {
+                    return get_option('ll_sync_shared_secret', '');
+                }
+                return sanitize_text_field(is_scalar($v)?(string)$v:'');
+            }
         ]);
         $yesNoKeep = function(string $name, string $def){
             return function($v) use ($name, $def){
