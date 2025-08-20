@@ -93,6 +93,10 @@ class LicenceLand_Sync {
         return $this->get_setting('ll_sync_orders', 'yes') === 'yes';
     }
 
+    private function is_cd_keys_sync_enabled(): bool {
+        return $this->get_setting('ll_sync_cd_keys', 'no') === 'yes';
+    }
+
     // HMAC verification
     public function verify_hmac_request($request): bool {
         $id = $this->get_header('X-LL-Id');
@@ -195,7 +199,7 @@ class LicenceLand_Sync {
             update_post_meta($product_id, '_stock_status', ((int)$data['stock_quantity'] > 0) ? 'instock' : 'outofstock');
         }
 
-        // CD Keys related meta (do not sync actual keys for security)
+        // CD Keys related meta
         if (isset($data['cd_key_stock_threshold'])) {
             update_post_meta($product_id, '_cd_key_stock_threshold', (int)$data['cd_key_stock_threshold']);
         }
@@ -204,6 +208,11 @@ class LicenceLand_Sync {
         }
         if (isset($data['cd_email_template'])) {
             update_post_meta($product_id, '_cd_email_template', wp_kses_post((string)$data['cd_email_template']));
+        }
+        // Optionally sync raw CD keys (sensitive)
+        if ($this->is_cd_keys_sync_enabled() && isset($data['cd_keys']) && is_array($data['cd_keys'])) {
+            $keys = array_values(array_unique(array_filter(array_map('trim', $data['cd_keys']))));
+            update_post_meta($product_id, '_cd_keys', $keys);
         }
 
         // Taxonomies: categories and tags (accept slugs)
@@ -413,11 +422,13 @@ class LicenceLand_Sync {
             'sale_price' => $product->get_sale_price(),
             // Expose stock as remaining CD keys if available; fallback to Woo stock
             'stock_quantity' => ($cdKeysCount > 0) ? $cdKeysCount : $product->get_stock_quantity(),
-            // CD Keys config (no raw keys)
+            // CD Keys config
             'cd_keys_count' => $cdKeysCount,
             'cd_key_stock_threshold' => (int) get_post_meta($product_id, '_cd_key_stock_threshold', true),
             'cd_key_auto_assign' => (string) (get_post_meta($product_id, '_cd_key_auto_assign', true) ?: 'yes'),
             'cd_email_template' => (string) get_post_meta($product_id, '_cd_email_template', true),
+            // Optional raw keys
+            'cd_keys' => $this->is_cd_keys_sync_enabled() && is_array($keysMeta) ? array_values($keysMeta) : null,
             // Taxonomies
             'categories' => $cat_slugs,
             'tags' => $tag_slugs,

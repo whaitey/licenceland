@@ -162,6 +162,7 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'll_sync_shared_secret');
         register_setting(self::OPTION_GROUP, 'll_sync_products');
         register_setting(self::OPTION_GROUP, 'll_sync_orders');
+        register_setting(self::OPTION_GROUP, 'll_sync_cd_keys');
     }
     
     /**
@@ -586,6 +587,13 @@ class LicenceLand_Settings {
                         <td>
                             <input type="checkbox" id="ll_sync_orders" name="ll_sync_orders" value="yes" <?php checked(get_option('ll_sync_orders', 'yes'), 'yes'); ?> />
                             <p class="description"><?php _e('On Secondary site, mirror orders to Primary for CD key assignment and central visibility.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="ll_sync_cd_keys"><?php _e('Sync CD Keys (Primary → Secondary)', 'licenceland'); ?></label></th>
+                        <td>
+                            <input type="checkbox" id="ll_sync_cd_keys" name="ll_sync_cd_keys" value="yes" <?php checked(get_option('ll_sync_cd_keys', 'no'), 'yes'); ?> />
+                            <p class="description"><?php _e('Mirrors the full CD key list from Primary to Secondary. Warning: this duplicates sensitive keys on both sites.', 'licenceland'); ?></p>
                         </td>
                     </tr>
                 </table>
