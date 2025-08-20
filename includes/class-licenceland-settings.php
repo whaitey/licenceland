@@ -222,9 +222,7 @@ class LicenceLand_Settings {
                 return ($s === 'yes') ? 'yes' : 'no';
             };
         };
-        register_setting(self::OPTION_GROUP, 'll_sync_products', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_products','yes'), 'default'=>'yes' ]);
-        register_setting(self::OPTION_GROUP, 'll_sync_orders', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_orders','yes'), 'default'=>'yes' ]);
-        register_setting(self::OPTION_GROUP, 'll_sync_cd_keys', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_cd_keys','no'), 'default'=>'no' ]);
+        // Deprecated toggles removed in favor of role-based behavior
 
         // Primary: multiple remotes JSON
         register_setting(self::OPTION_GROUP, 'll_sync_remotes_json', [
@@ -636,10 +634,10 @@ class LicenceLand_Settings {
                         <th><label for="ll_sync_mode"><?php _e('Mode', 'licenceland'); ?></label></th>
                         <td>
                             <select id="ll_sync_mode" name="ll_sync_mode">
-                                <option value="primary" <?php selected(get_option('ll_sync_mode', 'primary'), 'primary'); ?>><?php _e('Primary (push products)', 'licenceland'); ?></option>
-                                <option value="secondary" <?php selected(get_option('ll_sync_mode', 'primary'), 'secondary'); ?>><?php _e('Secondary', 'licenceland'); ?></option>
+                                <option value="primary" <?php selected(get_option('ll_sync_mode', 'primary'), 'primary'); ?>><?php _e('Primary (controller)', 'licenceland'); ?></option>
+                                <option value="secondary" <?php selected(get_option('ll_sync_mode', 'primary'), 'secondary'); ?>><?php _e('Secondary (receiver)', 'licenceland'); ?></option>
                             </select>
-                            <p class="description"><?php _e('Primary pushes products to the remote site. Secondary primarily receives.', 'licenceland'); ?></p>
+                            <p class="description"><?php _e('Primary pushes products to all configured remotes. Secondary mirrors orders to Primary. CD keys are mirrored automatically.', 'licenceland'); ?></p>
                         </td>
                     </tr>
                     <tr>
@@ -650,38 +648,17 @@ class LicenceLand_Settings {
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="ll_sync_remote_url"><?php _e('Remote Site URL', 'licenceland'); ?></label></th>
+                        <th><label for="ll_sync_remote_url"><?php _e('Primary/Single Remote URL', 'licenceland'); ?></label></th>
                         <td>
                             <input type="url" id="ll_sync_remote_url" name="ll_sync_remote_url" value="<?php echo esc_attr(get_option('ll_sync_remote_url', '')); ?>" class="regular-text" />
-                            <p class="description"><?php _e('Base URL of the other site (e.g., https://example.com).', 'licenceland'); ?></p>
+                            <p class="description"><?php _e('For Secondary: set Primary URL. For single-remote Primary, you can use this as a fallback.', 'licenceland'); ?></p>
                         </td>
                     </tr>
                     <tr>
                         <th><label for="ll_sync_shared_secret"><?php _e('Shared Secret', 'licenceland'); ?></label></th>
                         <td>
                             <input type="text" id="ll_sync_shared_secret" name="ll_sync_shared_secret" value="<?php echo esc_attr(get_option('ll_sync_shared_secret', '')); ?>" class="regular-text" />
-                            <p class="description"><?php _e('Used to sign sync requests (HMAC-SHA256). Keep this secret the same on both sites.', 'licenceland'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="ll_sync_products"><?php _e('Sync Products', 'licenceland'); ?></label></th>
-                        <td>
-                            <input type="checkbox" id="ll_sync_products" name="ll_sync_products" value="yes" <?php checked(get_option('ll_sync_products', 'yes'), 'yes'); ?> />
-                            <p class="description"><?php _e('When enabled on Primary, product create/update/delete pushes to Secondary.', 'licenceland'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="ll_sync_orders"><?php _e('Sync Orders (Secondary → Primary)', 'licenceland'); ?></label></th>
-                        <td>
-                            <input type="checkbox" id="ll_sync_orders" name="ll_sync_orders" value="yes" <?php checked(get_option('ll_sync_orders', 'yes'), 'yes'); ?> />
-                            <p class="description"><?php _e('On Secondary site, mirror orders to Primary for CD key assignment and central visibility.', 'licenceland'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="ll_sync_cd_keys"><?php _e('Sync CD Keys (Primary → Secondary)', 'licenceland'); ?></label></th>
-                        <td>
-                            <input type="checkbox" id="ll_sync_cd_keys" name="ll_sync_cd_keys" value="yes" <?php checked(get_option('ll_sync_cd_keys', 'no'), 'yes'); ?> />
-                            <p class="description"><?php _e('Mirrors the full CD key list from Primary to Secondary. Warning: this duplicates sensitive keys on both sites.', 'licenceland'); ?></p>
+                            <p class="description"><?php _e('Used to sign sync requests (HMAC-SHA256). For multi-remote, put secrets in the JSON list below.', 'licenceland'); ?></p>
                         </td>
                     </tr>
                 </table>

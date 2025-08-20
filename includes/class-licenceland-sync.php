@@ -106,17 +106,9 @@ class LicenceLand_Sync {
         return $this->get_setting('ll_sync_mode', 'primary') === 'primary';
     }
 
-    private function is_products_enabled(): bool {
-        return $this->get_setting('ll_sync_products', 'yes') === 'yes';
-    }
-
-    private function is_orders_enabled(): bool {
-        return $this->get_setting('ll_sync_orders', 'yes') === 'yes';
-    }
-
-    private function is_cd_keys_sync_enabled(): bool {
-        return $this->get_setting('ll_sync_cd_keys', 'no') === 'yes';
-    }
+    // Role-driven behavior: Primary pushes products; Secondary pushes orders. Keys always mirrored.
+    private function is_products_enabled(): bool { return $this->is_primary(); }
+    private function is_orders_enabled(): bool { return !$this->is_primary(); }
 
     // HMAC verification
     public function verify_hmac_request($request): bool {
