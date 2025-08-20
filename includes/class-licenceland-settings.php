@@ -225,6 +225,32 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'll_sync_products', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_products','yes'), 'default'=>'yes' ]);
         register_setting(self::OPTION_GROUP, 'll_sync_orders', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_orders','yes'), 'default'=>'yes' ]);
         register_setting(self::OPTION_GROUP, 'll_sync_cd_keys', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('ll_sync_cd_keys','no'), 'default'=>'no' ]);
+
+        // Primary: multiple remotes JSON
+        register_setting(self::OPTION_GROUP, 'll_sync_remotes_json', [
+            'type' => 'string',
+            'sanitize_callback' => function($v){
+                $raw = is_scalar($v)?(string)$v:'';
+                $list = json_decode($raw, true);
+                if (!is_array($list)) {
+                    // keep previous JSON if invalid
+                    return (string) get_option('ll_sync_remotes_json', '[]');
+                }
+                $norm = [];
+                foreach ($list as $row) {
+                    if (!is_array($row)) continue;
+                    $id = sanitize_text_field((string)($row['id'] ?? ''));
+                    $url = esc_url_raw((string)($row['url'] ?? ''));
+                    $secret = sanitize_text_field((string)($row['secret'] ?? ''));
+                    if ($id !== '' && $url !== '' && $secret !== '') {
+                        $norm[] = ['id'=>$id,'url'=>$url,'secret'=>$secret];
+                    }
+                }
+                update_option('ll_sync_remotes', $norm);
+                return wp_json_encode($norm, JSON_UNESCAPED_SLASHES);
+            },
+            'default' => '[]'
+        ]);
     }
     
     /**
@@ -690,6 +716,24 @@ class LicenceLand_Settings {
                 <button type="button" class="button button-primary" id="ll-push-remote-payments"><?php _e('Push to Remote', 'licenceland'); ?></button>
                 <span id="ll-push-remote-payments-result" style="margin-left:10px;"></span>
             </p>
+
+            <hr>
+            <h2><?php _e('Primary: Secondary Remotes (JSON)', 'licenceland'); ?></h2>
+            <p><?php _e('On the Primary site, list all Secondary sites here. Example:', 'licenceland'); ?></p>
+            <pre>[{"id":"site-b","url":"https:\/\/site-b.example","secret":"shared-secret"},{"id":"site-c","url":"https:\/\/site-c.example","secret":"shared-secret"}]</pre>
+            <form method="post" action="options.php">
+                <?php settings_fields(self::OPTION_GROUP); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="ll_sync_remotes_json"><?php _e('Remotes JSON', 'licenceland'); ?></label></th>
+                        <td>
+                            <textarea id="ll_sync_remotes_json" name="ll_sync_remotes_json" rows="6" class="large-text code"><?php echo esc_textarea(get_option('ll_sync_remotes_json', '[]')); ?></textarea>
+                            <p class="description"><?php _e('Each object requires: id, url, secret.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                <?php submit_button(__('Save Remotes', 'licenceland')); ?>
+            </form>
         </div>
 
         <script>

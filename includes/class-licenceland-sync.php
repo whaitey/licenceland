@@ -130,9 +130,19 @@ class LicenceLand_Sync {
         if (abs(time() - (int)$ts) > 300) {
             return false;
         }
-        $secret = $this->get_setting('ll_sync_shared_secret', '');
+        // Find matching secret by incoming site id
+        $secret = '';
+        $remotes = (array) get_option('ll_sync_remotes', []);
+        foreach ($remotes as $r) {
+            if (!empty($r['id']) && (string)$r['id'] === $id) {
+                $secret = (string)($r['secret'] ?? '');
+                break;
+            }
+        }
         if ($secret === '') {
-            return false;
+            // Fallback to single secret
+            $secret = (string) $this->get_setting('ll_sync_shared_secret', '');
+            if ($secret === '') { return false; }
         }
         $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'POST';
         $rawPath = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
@@ -389,6 +399,7 @@ class LicenceLand_Sync {
             'order_id' => (string)$order->get_id(),
             // Assign keys only when Secondary pushes to Primary. If we're Primary pushing to Secondary, set false for visibility-only mirror.
             'assign_keys' => $this->is_primary() ? false : true,
+            'shop_type' => isset($_COOKIE['ds_shop_type']) ? sanitize_text_field((string)$_COOKIE['ds_shop_type']) : 'lakossagi',
             'billing' => [
                 'first_name' => $order->get_billing_first_name(),
                 'last_name' => $order->get_billing_last_name(),
@@ -554,41 +565,42 @@ class LicenceLand_Sync {
     }
 
     private function send_to_remote(string $method, string $path, string $body): void {
-        $remote = rtrim((string)$this->get_setting('ll_sync_remote_url', ''), '/');
-        $secret = (string)$this->get_setting('ll_sync_shared_secret', '');
         $siteId = (string)$this->get_setting('ll_sync_site_id', home_url());
-        if ($remote === '' || $secret === '') {
-            return;
+        $remotes = (array) get_option('ll_sync_remotes', []);
+        // Fallback to single remote option if list empty
+        if (empty($remotes)) {
+            $singleUrl = (string) $this->get_setting('ll_sync_remote_url', '');
+            $singleSecret = (string) $this->get_setting('ll_sync_shared_secret', '');
+            if ($singleUrl && $singleSecret) {
+                $remotes = [['id'=>'remote-1','url'=>$singleUrl,'secret'=>$singleSecret]];
+            }
         }
-        $ts = (string) time();
-        $payload = strtoupper($method) . "\n" . $path . "\n" . $ts . "\n" . $body;
-        $sig = base64_encode(hash_hmac('sha256', $payload, $secret, true));
-
-        $args = [
-            'timeout' => 10,
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'X-LL-Id' => $siteId,
-                'X-LL-Timestamp' => $ts,
-                'X-LL-Signature' => $sig,
-                'X-LL-Sync' => '1',
-            ],
-            'body' => $body,
-        ];
-
-        $url = $remote . $path;
-        $response = null;
-        if ($method === 'POST') {
-            $response = wp_remote_post($url, $args);
-        } elseif ($method === 'DELETE') {
-            $args['method'] = 'DELETE';
-            $response = wp_remote_request($url, $args);
-        }
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            if (is_wp_error($response)) {
-                error_log('[LicenceLand Sync] Push ' . $method . ' ' . $url . ' failed: ' . $response->get_error_message());
-            } else if ($response) {
-                error_log('[LicenceLand Sync] Push ' . $method . ' ' . $url . ' -> ' . wp_remote_retrieve_response_code($response));
+        foreach ($remotes as $remote) {
+            $remoteUrl = rtrim((string)($remote['url'] ?? ''), '/');
+            $secret = (string)($remote['secret'] ?? '');
+            if ($remoteUrl === '' || $secret === '') { continue; }
+            $ts = (string) time();
+            $payload = strtoupper($method) . "\n" . $path . "\n" . $ts . "\n" . $body;
+            $sig = base64_encode(hash_hmac('sha256', $payload, $secret, true));
+            $args = [
+                'timeout' => 10,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'X-LL-Id' => $siteId,
+                    'X-LL-Timestamp' => $ts,
+                    'X-LL-Signature' => $sig,
+                    'X-LL-Sync' => '1',
+                ],
+                'body' => $body,
+            ];
+            $url = $remoteUrl . $path;
+            $response = ($method === 'POST') ? wp_remote_post($url, $args) : wp_remote_request($url, $args + ['method' => $method]);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                if (is_wp_error($response)) {
+                    error_log('[LicenceLand Sync] Push ' . $method . ' ' . $url . ' failed: ' . $response->get_error_message());
+                } else if ($response) {
+                    error_log('[LicenceLand Sync] Push ' . $method . ' ' . $url . ' -> ' . wp_remote_retrieve_response_code($response));
+                }
             }
         }
     }
@@ -730,6 +742,9 @@ class LicenceLand_Sync {
             }
 
             $order->update_meta_data('_ll_origin_site', $originSite);
+            if (!empty($data['shop_type'])) {
+                $order->update_meta_data('_ll_origin_shop_type', sanitize_text_field((string)$data['shop_type']));
+            }
             if ($remoteOrderId !== '') {
                 $order->update_meta_data('_ll_remote_order_id', $remoteOrderId);
             }
