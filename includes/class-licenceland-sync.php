@@ -81,6 +81,24 @@ class LicenceLand_Sync {
     }
 
     private function get_setting(string $key, $default = '') {
+        // Constants override options for zero-UI operation
+        $map = [
+            'll_sync_mode' => 'LICENCELAND_SYNC_MODE',
+            'll_sync_site_id' => 'LICENCELAND_SYNC_SITE_ID',
+            'll_sync_remote_url' => 'LICENCELAND_SYNC_REMOTE_URL',
+            'll_sync_shared_secret' => 'LICENCELAND_SYNC_SECRET',
+            'll_sync_products' => 'LICENCELAND_SYNC_PRODUCTS',
+            'll_sync_orders' => 'LICENCELAND_SYNC_ORDERS',
+            'll_sync_cd_keys' => 'LICENCELAND_SYNC_CD_KEYS',
+        ];
+        if (isset($map[$key]) && defined($map[$key])) {
+            $val = constant($map[$key]);
+            if ($key === 'll_sync_products' || $key === 'll_sync_orders' || $key === 'll_sync_cd_keys') {
+                $s = is_string($val) ? strtolower($val) : (is_bool($val) ? ($val ? 'yes' : 'no') : '');
+                return ($s === 'yes' || $s === 'true' || $s === '1') ? 'yes' : 'no';
+            }
+            return $val;
+        }
         return get_option($key, $default);
     }
 

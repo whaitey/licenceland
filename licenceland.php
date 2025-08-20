@@ -26,6 +26,15 @@ define('LICENCELAND_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LICENCELAND_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('LICENCELAND_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
+// Optional zero-UI sync configuration via constants (set in wp-config.php):
+// define('LICENCELAND_SYNC_MODE', 'primary'); // or 'secondary'
+// define('LICENCELAND_SYNC_SITE_ID', home_url());
+// define('LICENCELAND_SYNC_REMOTE_URL', 'https://other-site.example');
+// define('LICENCELAND_SYNC_SECRET', 'change-me');
+// define('LICENCELAND_SYNC_PRODUCTS', 'yes');
+// define('LICENCELAND_SYNC_ORDERS', 'yes');
+// define('LICENCELAND_SYNC_CD_KEYS', 'no');
+
 // Fallback for Parsedown (used by update checker to render changelogs)
 if (!class_exists('Parsedown')) {
     class Parsedown {
