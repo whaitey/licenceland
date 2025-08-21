@@ -348,10 +348,7 @@ class LicenceLand_Sync {
         if ($meta_key !== '_cd_keys' && $meta_key !== '_cd_email_template' && $meta_key !== '_cd_key_stock_threshold' && $meta_key !== '_cd_key_auto_assign') {
             return;
         }
-        // Only push if toggled on (raw keys or at least config)
-        if ($meta_key === '_cd_keys' && !$this->is_cd_keys_sync_enabled()) {
-            return;
-        }
+        // Always push on CD key/config changes (role-based model)
         $post = get_post($object_id);
         if ($post && $post->post_type === 'product') {
             $this->push_product((int)$object_id);
