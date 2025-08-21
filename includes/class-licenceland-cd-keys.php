@@ -703,20 +703,29 @@ Best regards,
                 ['%d']
             );
             
-            // Get order and item for email
+            // Get order and item for email (guard against missing order/item)
             $order = wc_get_order($backorder->order_id);
-            $item = $order->get_item($backorder->order_item_id);
-            
-            // Send CD key email
-            $this->send_cd_key_email_to_customer($order, $item, $cd_key);
-            
-            // Add order note
-            $order->add_order_note(
-                sprintf(
-                    __('CD Key backorder processed and sent to customer. Keys: %s', 'licenceland'),
-                    $cd_key
-                )
-            );
+            if ($order) {
+                $item = $order->get_item($backorder->order_item_id);
+                if ($item) {
+                    // Send CD key email
+                    $this->send_cd_key_email_to_customer($order, $item, $cd_key);
+                    // Add order note
+                    $order->add_order_note(
+                        sprintf(
+                            __('CD Key backorder processed and sent to customer. Keys: %s', 'licenceland'),
+                            $cd_key
+                        )
+                    );
+                } else {
+                    $order->add_order_note(
+                        sprintf(
+                            __('CD Key backorder processed. Order item not found for email. Keys: %s', 'licenceland'),
+                            $cd_key
+                        )
+                    );
+                }
+            }
             
             // Log usage
             $this->log_cd_key_usage($assigned_keys, $backorder->product_id, $backorder->order_id, $backorder->order_item_id);
