@@ -337,21 +337,24 @@ class LicenceLand_Sync {
         $this->send_to_remote('DELETE', $path, '');
     }
 
-    // If the CD keys meta changes on Primary, push the product payload (if allowed)
+    // If the CD keys/config meta changes, push the product payload to propagate changes
     public function maybe_push_keys_on_change($meta_id, $object_id, $meta_key, $_meta_value) {
         if (self::$isSyncRequest) {
-            return;
-        }
-        if (!$this->is_primary()) {
             return;
         }
         if ($meta_key !== '_cd_keys' && $meta_key !== '_cd_email_template' && $meta_key !== '_cd_key_stock_threshold' && $meta_key !== '_cd_key_auto_assign') {
             return;
         }
-        // Always push on CD key/config changes (role-based model)
         $post = get_post($object_id);
         if ($post && $post->post_type === 'product') {
-            $this->push_product((int)$object_id);
+            if ($this->is_primary()) {
+                // Primary fan-out
+                $this->push_product((int)$object_id);
+            } else {
+                // Secondary -> push to Primary only
+                $payload = json_encode($this->build_product_payload((int)$object_id));
+                $this->send_to_remote('POST', '/wp-json/licenceland/v1/sync/product', (string)$payload);
+            }
         }
     }
 
