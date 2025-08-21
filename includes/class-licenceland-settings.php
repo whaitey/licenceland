@@ -224,30 +224,23 @@ class LicenceLand_Settings {
         };
         // Deprecated toggles removed in favor of role-based behavior
 
-        // Primary: multiple remotes JSON
-        register_setting(self::OPTION_GROUP, 'll_sync_remotes_json', [
-            'type' => 'string',
+        // Primary: multiple remotes URL list (one per line)
+        register_setting(self::OPTION_GROUP, 'll_sync_remote_urls', [
+            'type' => 'array',
             'sanitize_callback' => function($v){
                 $raw = is_scalar($v)?(string)$v:'';
-                $list = json_decode($raw, true);
-                if (!is_array($list)) {
-                    // keep previous JSON if invalid
-                    return (string) get_option('ll_sync_remotes_json', '[]');
+                // Support textarea POST coming as string
+                if (is_string($raw)) {
+                    $lines = preg_split('/[\r\n]+/', $raw) ?: [];
+                } else if (is_array($v)) {
+                    $lines = $v;
+                } else {
+                    $lines = [];
                 }
-                $norm = [];
-                foreach ($list as $row) {
-                    if (!is_array($row)) continue;
-                    $id = sanitize_text_field((string)($row['id'] ?? ''));
-                    $url = esc_url_raw((string)($row['url'] ?? ''));
-                    $secret = sanitize_text_field((string)($row['secret'] ?? ''));
-                    if ($id !== '' && $url !== '' && $secret !== '') {
-                        $norm[] = ['id'=>$id,'url'=>$url,'secret'=>$secret];
-                    }
-                }
-                update_option('ll_sync_remotes', $norm);
-                return wp_json_encode($norm, JSON_UNESCAPED_SLASHES);
+                $urls = array_values(array_unique(array_filter(array_map(function($u){ return esc_url_raw(trim((string)$u)); }, $lines))));
+                return $urls;
             },
-            'default' => '[]'
+            'default' => []
         ]);
     }
     
@@ -695,17 +688,16 @@ class LicenceLand_Settings {
             </p>
 
             <hr>
-            <h2><?php _e('Primary: Secondary Remotes (JSON)', 'licenceland'); ?></h2>
-            <p><?php _e('On the Primary site, list all Secondary sites here. Example:', 'licenceland'); ?></p>
-            <pre>[{"id":"site-b","url":"https:\/\/site-b.example","secret":"shared-secret"},{"id":"site-c","url":"https:\/\/site-c.example","secret":"shared-secret"}]</pre>
+            <h2><?php _e('Primary: Secondary Remotes (URLs)', 'licenceland'); ?></h2>
+            <p><?php _e('On the Primary site, list all Secondary site URLs below (one per line). All remotes use the Shared Secret above.', 'licenceland'); ?></p>
             <form method="post" action="options.php">
                 <?php settings_fields(self::OPTION_GROUP); ?>
                 <table class="form-table">
                     <tr>
-                        <th><label for="ll_sync_remotes_json"><?php _e('Remotes JSON', 'licenceland'); ?></label></th>
+                        <th><label for="ll_sync_remote_urls"><?php _e('Remote URLs', 'licenceland'); ?></label></th>
                         <td>
-                            <textarea id="ll_sync_remotes_json" name="ll_sync_remotes_json" rows="6" class="large-text code"><?php echo esc_textarea(get_option('ll_sync_remotes_json', '[]')); ?></textarea>
-                            <p class="description"><?php _e('Each object requires: id, url, secret.', 'licenceland'); ?></p>
+                            <textarea id="ll_sync_remote_urls" name="ll_sync_remote_urls" rows="6" class="large-text code"><?php echo esc_textarea(implode("\n", (array) get_option('ll_sync_remote_urls', []))); ?></textarea>
+                            <p class="description"><?php _e('Example: https://site-b.example', 'licenceland'); ?></p>
                         </td>
                     </tr>
                 </table>

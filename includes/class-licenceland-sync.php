@@ -123,19 +123,9 @@ class LicenceLand_Sync {
             return false;
         }
         // Find matching secret by incoming site id
-        $secret = '';
-        $remotes = (array) get_option('ll_sync_remotes', []);
-        foreach ($remotes as $r) {
-            if (!empty($r['id']) && (string)$r['id'] === $id) {
-                $secret = (string)($r['secret'] ?? '');
-                break;
-            }
-        }
-        if ($secret === '') {
-            // Fallback to single secret
-            $secret = (string) $this->get_setting('ll_sync_shared_secret', '');
-            if ($secret === '') { return false; }
-        }
+        // Shared secret is global now
+        $secret = (string) $this->get_setting('ll_sync_shared_secret', '');
+        if ($secret === '') { return false; }
         $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'POST';
         $rawPath = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
         $route = ($request instanceof WP_REST_Request) ? (string)$request->get_route() : '';
@@ -558,18 +548,15 @@ class LicenceLand_Sync {
 
     private function send_to_remote(string $method, string $path, string $body): void {
         $siteId = (string)$this->get_setting('ll_sync_site_id', home_url());
-        $remotes = (array) get_option('ll_sync_remotes', []);
+        $urls = (array) get_option('ll_sync_remote_urls', []);
         // Fallback to single remote option if list empty
-        if (empty($remotes)) {
+        if (empty($urls)) {
             $singleUrl = (string) $this->get_setting('ll_sync_remote_url', '');
-            $singleSecret = (string) $this->get_setting('ll_sync_shared_secret', '');
-            if ($singleUrl && $singleSecret) {
-                $remotes = [['id'=>'remote-1','url'=>$singleUrl,'secret'=>$singleSecret]];
-            }
+            if ($singleUrl) { $urls = [$singleUrl]; }
         }
-        foreach ($remotes as $remote) {
-            $remoteUrl = rtrim((string)($remote['url'] ?? ''), '/');
-            $secret = (string)($remote['secret'] ?? '');
+        $secret = (string) $this->get_setting('ll_sync_shared_secret', '');
+        foreach ($urls as $remoteUrl) {
+            $remoteUrl = rtrim((string)$remoteUrl, '/');
             if ($remoteUrl === '' || $secret === '') { continue; }
             $ts = (string) time();
             $payload = strtoupper($method) . "\n" . $path . "\n" . $ts . "\n" . $body;
