@@ -24,7 +24,7 @@ class LicenceLand_Sync {
         add_action('before_delete_post', [$this, 'maybe_push_product_delete'], 10, 1);
 
         // Order push (Secondary -> Primary)
-        add_action('woocommerce_checkout_order_processed', [$this, 'maybe_push_order'], 20, 3);
+        add_action('woocommerce_checkout_order_processed', [$this, 'maybe_push_order'], 20, 1);
         add_action('woocommerce_new_order', [$this, 'maybe_push_order'], 20, 1);
 
         // Push CD key changes immediately (Primary only)
@@ -179,8 +179,8 @@ class LicenceLand_Sync {
                 'post_title' => wp_strip_all_tags((string)($data['name'] ?? $sku)),
                 'post_status' => in_array($data['status'] ?? 'publish', ['publish','draft','pending','private'], true) ? $data['status'] : 'publish',
                 'post_type' => 'product',
-                'post_content' => (string)($data['description'] ?? ''),
-                'post_excerpt' => (string)($data['short_description'] ?? ''),
+                'post_content' => wp_kses_post((string)($data['description'] ?? '')),
+                'post_excerpt' => wp_kses_post((string)($data['short_description'] ?? '')),
             ], true);
             if (is_wp_error($post_id)) {
                 return new WP_REST_Response(['error' => $post_id->get_error_message()], 500);
@@ -193,21 +193,21 @@ class LicenceLand_Sync {
                 'ID' => $product_id,
                 'post_title' => wp_strip_all_tags((string)($data['name'] ?? '')),
                 'post_status' => in_array($data['status'] ?? 'publish', ['publish','draft','pending','private'], true) ? $data['status'] : 'publish',
-                'post_content' => (string)($data['description'] ?? ''),
-                'post_excerpt' => (string)($data['short_description'] ?? ''),
+                'post_content' => wp_kses_post((string)($data['description'] ?? '')),
+                'post_excerpt' => wp_kses_post((string)($data['short_description'] ?? '')),
             ]);
         }
 
         // Prices & stock
         if (isset($data['regular_price'])) {
-            update_post_meta($product_id, '_regular_price', (string)$data['regular_price']);
+            update_post_meta($product_id, '_regular_price', wc_format_decimal((string)$data['regular_price']));
         }
         if (isset($data['sale_price'])) {
-            update_post_meta($product_id, '_sale_price', (string)$data['sale_price']);
+            update_post_meta($product_id, '_sale_price', wc_format_decimal((string)$data['sale_price']));
         }
         $price = isset($data['sale_price']) && $data['sale_price'] !== '' ? (string)$data['sale_price'] : (string)($data['regular_price'] ?? '');
         if ($price !== '') {
-            update_post_meta($product_id, '_price', $price);
+            update_post_meta($product_id, '_price', wc_format_decimal($price));
         }
         if (isset($data['stock_quantity'])) {
             wc_update_product_stock($product_id, (int)$data['stock_quantity']);
@@ -220,14 +220,16 @@ class LicenceLand_Sync {
             update_post_meta($product_id, '_cd_key_stock_threshold', (int)$data['cd_key_stock_threshold']);
         }
         if (isset($data['cd_key_auto_assign'])) {
-            update_post_meta($product_id, '_cd_key_auto_assign', ($data['cd_key_auto_assign'] === 'yes') ? 'yes' : 'no');
+            $val = is_string($data['cd_key_auto_assign']) ? strtolower((string)$data['cd_key_auto_assign']) : $data['cd_key_auto_assign'];
+            $yn = ($val === 'yes' || $val === 'true' || $val === 1 || $val === '1') ? 'yes' : 'no';
+            update_post_meta($product_id, '_cd_key_auto_assign', $yn);
         }
         if (isset($data['cd_email_template'])) {
             update_post_meta($product_id, '_cd_email_template', wp_kses_post((string)$data['cd_email_template']));
         }
         // Optionally sync raw CD keys (sensitive)
         if (isset($data['cd_keys']) && is_array($data['cd_keys'])) {
-            $keys = array_values(array_unique(array_filter(array_map('trim', $data['cd_keys']))));
+            $keys = array_values(array_unique(array_filter(array_map(function($k){ return sanitize_text_field((string)$k); }, $data['cd_keys']))));
             update_post_meta($product_id, '_cd_keys', $keys);
         }
 
@@ -417,9 +419,15 @@ class LicenceLand_Sync {
             ];
         }
 
-        $this->send_to_remote('POST', '/wp-json/licenceland/v1/sync/order', json_encode($payload));
-        $order->update_meta_data('_ll_pushed_to_primary', 1);
-        $order->save();
+        $res = $this->send_to_remote_public('POST', '/wp-json/licenceland/v1/sync/order', json_encode($payload));
+        if (!empty($res['ok'])) {
+            $order->update_meta_data('_ll_pushed_to_primary', 1);
+            $order->save();
+        } else {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[LicenceLand Sync] Order push failed: ' . ($res['error'] ?? 'unknown_error'));
+            }
+        }
     }
     private function build_product_payload(int $product_id): array {
         $product = wc_get_product($product_id);
@@ -562,7 +570,7 @@ class LicenceLand_Sync {
             $payload = strtoupper($method) . "\n" . $path . "\n" . $ts . "\n" . $body;
             $sig = base64_encode(hash_hmac('sha256', $payload, $secret, true));
             $args = [
-                'timeout' => 10,
+                'timeout' => 12,
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'X-LL-Id' => $siteId,
@@ -571,6 +579,8 @@ class LicenceLand_Sync {
                     'X-LL-Sync' => '1',
                 ],
                 'body' => $body,
+                'redirection' => 2,
+                'blocking' => true,
             ];
             $url = $remoteUrl . $path;
             $response = ($method === 'POST') ? wp_remote_post($url, $args) : wp_remote_request($url, $args + ['method' => $method]);
@@ -604,7 +614,7 @@ class LicenceLand_Sync {
         $payload = strtoupper($method) . "\n" . $path . "\n" . $ts . "\n" . $body;
         $sig = base64_encode(hash_hmac('sha256', $payload, $secret, true));
         $args = [
-            'timeout' => 10,
+            'timeout' => 12,
             'headers' => [
                 'Content-Type' => 'application/json',
                 'X-LL-Id' => $siteId,
@@ -613,6 +623,8 @@ class LicenceLand_Sync {
                 'X-LL-Sync' => '1',
             ],
             'body' => $body,
+            'redirection' => 2,
+            'blocking' => true,
         ];
         $url = $remote . $path;
         $response = ($method === 'POST') ? wp_remote_post($url, $args) : wp_remote_request($url, $args + ['method' => $method]);
@@ -699,6 +711,7 @@ class LicenceLand_Sync {
             $order = wc_create_order();
 
             // Add items by SKU
+            $addedCount = 0;
             foreach ($items as $li) {
                 $sku = isset($li['sku']) ? (string)$li['sku'] : '';
                 $qty = isset($li['quantity']) ? max(1, (int)$li['quantity']) : 1;
@@ -710,6 +723,11 @@ class LicenceLand_Sync {
                     continue;
                 }
                 $order->add_product(wc_get_product($productId), $qty);
+                $addedCount++;
+            }
+
+            if ($addedCount === 0) {
+                return new WP_REST_Response(['error' => 'items_not_found'], 400);
             }
 
             // Addresses

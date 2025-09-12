@@ -408,6 +408,7 @@ class LicenceLand_Core {
         add_action('wp_ajax_licenceland_force_update_check', [$this, 'force_update_check']);
         add_action('wp_ajax_licenceland_debug_update_checker', [$this, 'debug_update_checker']);
         add_action('wp_ajax_licenceland_push_remote_payments', [$this, 'push_remote_payments']);
+        add_action('admin_notices', [$this, 'sync_push_result_notice']);
         
         // Add admin notice for update checker status
         add_action('admin_notices', [$this, 'update_checker_notice']);
@@ -613,8 +614,20 @@ class LicenceLand_Core {
         ]);
         $res = licenceland()->sync->send_to_remote_public('POST', '/wp-json/licenceland/v1/sync/settings/payments', $payload);
         if ($res['ok'] ?? false) {
+            set_transient('licenceland_sync_push_notice', ['type' => 'success', 'msg' => __('Remote payments pushed successfully.', 'licenceland')], 60);
             wp_send_json_success();
         }
+        set_transient('licenceland_sync_push_notice', ['type' => 'error', 'msg' => (string)($res['error'] ?? __('Push failed.', 'licenceland'))], 60);
         wp_send_json_error(esc_html($res['error'] ?? __('Push failed.', 'licenceland')));
+    }
+
+    public function sync_push_result_notice() {
+        if (!is_admin()) { return; }
+        $notice = get_transient('licenceland_sync_push_notice');
+        if (!$notice || !is_array($notice)) { return; }
+        delete_transient('licenceland_sync_push_notice');
+        $type = $notice['type'] === 'success' ? 'notice-success' : 'notice-error';
+        $msg = esc_html((string)$notice['msg']);
+        echo '<div class="notice ' . esc_attr($type) . ' is-dismissible"><p>' . $msg . '</p></div>';
     }
 }
