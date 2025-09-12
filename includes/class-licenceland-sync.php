@@ -278,6 +278,14 @@ class LicenceLand_Sync {
             update_post_meta($product_id, '_ll_sync_version', (int)$data['sync_version']);
         }
 
+        // Ensure Dual Shop availability defaults exist if missing (treat as available by default)
+        if (get_post_meta($product_id, '_ds_available_lakossagi', true) === '') {
+            update_post_meta($product_id, '_ds_available_lakossagi', 'yes');
+        }
+        if (get_post_meta($product_id, '_ds_available_uzleti', true) === '') {
+            update_post_meta($product_id, '_ds_available_uzleti', 'yes');
+        }
+
         return new WP_REST_Response([
             'ok' => true,
             'product_id' => $product_id,

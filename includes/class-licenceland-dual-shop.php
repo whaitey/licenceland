@@ -191,10 +191,18 @@ class LicenceLand_Dual_Shop {
         $meta_key = ($shop === 'uzleti') ? '_ds_available_uzleti' : '_ds_available_lakossagi';
         
         $meta_query = $q->get('meta_query') ?: [];
+        // Allow products without explicit meta (treat missing as available)
         $meta_query[] = [
-            'key' => $meta_key,
-            'value' => 'yes',
-            'compare' => '='
+            'relation' => 'OR',
+            [
+                'key' => $meta_key,
+                'value' => 'yes',
+                'compare' => '=',
+            ],
+            [
+                'key' => $meta_key,
+                'compare' => 'NOT EXISTS',
+            ],
         ];
         
         $q->set('meta_query', $meta_query);
@@ -212,8 +220,8 @@ class LicenceLand_Dual_Shop {
         $shop = $_COOKIE['ds_shop_type'] ?? 'lakossagi';
         $meta_key = ($shop === 'uzleti') ? '_ds_available_uzleti' : '_ds_available_lakossagi';
         $available = get_post_meta($post->ID, $meta_key, true);
-        
-        if ($available !== 'yes') {
+        // Treat missing meta as available; only block when explicitly 'no'
+        if ($available === 'no') {
             wp_redirect(home_url());
             exit;
         }
@@ -226,8 +234,8 @@ class LicenceLand_Dual_Shop {
         $shop = $_COOKIE['ds_shop_type'] ?? 'lakossagi';
         $meta_key = ($shop === 'uzleti') ? '_ds_available_uzleti' : '_ds_available_lakossagi';
         $available = get_post_meta($product_id, $meta_key, true);
-        
-        if ($available !== 'yes') {
+        // Only block when explicitly 'no'
+        if ($available === 'no') {
             wc_add_notice(__('This product is not available in the current shop.', 'licenceland'), 'error');
             return false;
         }
@@ -246,7 +254,7 @@ class LicenceLand_Dual_Shop {
             $product_id = $cart_item['product_id'];
             $available = get_post_meta($product_id, $meta_key, true);
             
-            if ($available !== 'yes') {
+            if ($available === 'no') {
                 WC()->cart->remove_cart_item($cart_item['key']);
                 wc_add_notice(__('A product has been removed because it is not available in the current shop.', 'licenceland'), 'error');
             }
