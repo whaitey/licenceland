@@ -796,15 +796,25 @@ class LicenceLand_Sync {
 
             // Assign CD keys if requested (e.g., Secondary -> Primary). Skip for visibility-only mirrors.
             $shouldAssignKeys = !empty($data['assign_keys']);
+            $affectedProductIds = [];
             if ($shouldAssignKeys) {
                 foreach ($order->get_items() as $itemId => $item) {
                     $this->assign_cd_keys_to_item($order, $itemId, $item);
+                    $pid = (int) $item->get_product_id();
+                    if ($pid) { $affectedProductIds[$pid] = true; }
                 }
             }
 
             // Mark processing and save
             $order->set_status('processing');
             $order->save();
+
+            // Fan-out product updates so secondaries mirror updated CD key stock
+            if (!empty($affectedProductIds)) {
+                foreach (array_keys($affectedProductIds) as $pid) {
+                    $this->push_product((int)$pid);
+                }
+            }
 
             return new WP_REST_Response(['ok' => true, 'order_id' => $order->get_id()], 200);
         } catch (Exception $e) {
@@ -838,6 +848,8 @@ class LicenceLand_Sync {
 
         $cdKeyValue = (count($assigned) === 1) ? $assigned[0] : implode(', ', $assigned);
         wc_update_order_item_meta($itemId, '_cd_key', $cdKeyValue);
+        // Deduplicate remaining keys and reindex
+        $keys = array_values(array_unique(array_map('trim', $keys)));
         update_post_meta($productId, '_cd_keys', $keys);
         $this->log_cd_key_usage($assigned, $productId, $order->get_id(), $itemId);
 
