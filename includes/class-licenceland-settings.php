@@ -257,7 +257,7 @@ class LicenceLand_Settings {
         $result = '';
         if (!empty($_POST['ll_keys_nonce']) && wp_verify_nonce($_POST['ll_keys_nonce'], 'll_keys_manage')) {
             $ran = true;
-            $isPrimary = function_exists('licenceland') && licenceland()->sync && licenceland()->sync->is_primary();
+            $isPrimary = function_exists('licenceland') && licenceland()->sync && method_exists(licenceland()->sync, 'is_primary_site') ? licenceland()->sync->is_primary_site() : false;
             $idsToUpdate = $product_ids;
             if ($skus !== '') {
                 $skuListFromText = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,\s]+/', $skus)))));
