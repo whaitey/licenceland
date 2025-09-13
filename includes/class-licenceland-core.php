@@ -413,18 +413,27 @@ class LicenceLand_Core {
         add_action('wp_ajax_licenceland_push_all_products', [$this, 'push_all_products']);
         add_action('admin_notices', [$this, 'sync_push_result_notice']);
 
-        // Add submenu pointing to CPT list
+        // Add submenu for custom Orders page (always works)
         add_action('admin_menu', function(){
             add_submenu_page(
                 LicenceLand_Settings::MENU_SLUG,
                 __('Mirrored Orders', 'licenceland'),
                 __('Orders', 'licenceland'),
                 'manage_woocommerce',
+                'licenceland-orders',
+                [$this, 'orders_page']
+            );
+        });
+        // Optional: also add CPT list (advanced)
+        add_action('admin_menu', function(){
+            add_submenu_page(
+                LicenceLand_Settings::MENU_SLUG,
+                __('Orders (CPT)', 'licenceland'),
+                __('Orders (CPT)', 'licenceland'),
+                'manage_woocommerce',
                 'edit.php?post_type=licenceland_order_mirror'
             );
         });
-        // Redirect friendly slug
-        add_action('admin_init', [$this, 'redirect_orders_friendly']);
         
         // Add admin notice for update checker status
         add_action('admin_notices', [$this, 'update_checker_notice']);
@@ -685,10 +694,72 @@ class LicenceLand_Core {
      * Orders page (mirror view)
      */
     public function orders_page() {
-        // Deprecated: listing now handled by CPT list table
         if (!current_user_can('manage_woocommerce')) { return; }
-        wp_safe_redirect(admin_url('edit.php?post_type=licenceland_order_mirror'));
-        exit;
+        // Render simple table from stored CPT entries if any, fallback to option log
+        echo '<div class="wrap"><h1>' . esc_html__('Mirrored Orders', 'licenceland') . '</h1>';
+        $q = new WP_Query([
+            'post_type' => 'licenceland_order_mirror',
+            'post_status' => 'any',
+            'posts_per_page' => 50,
+        ]);
+        if ($q->have_posts()) {
+            echo '<table class="widefat striped"><thead><tr>';
+            echo '<th>' . esc_html__('Date', 'licenceland') . '</th>';
+            echo '<th>' . esc_html__('Origin', 'licenceland') . '</th>';
+            echo '<th>' . esc_html__('Remote ID', 'licenceland') . '</th>';
+            echo '<th>' . esc_html__('Email', 'licenceland') . '</th>';
+            echo '<th>' . esc_html__('Items', 'licenceland') . '</th>';
+            echo '</tr></thead><tbody>';
+            while ($q->have_posts()) { $q->the_post();
+                $pid = get_the_ID();
+                $origin = get_post_meta($pid, '_ll_origin_site', true);
+                $rid = get_post_meta($pid, '_ll_remote_order_id', true);
+                $email = get_post_meta($pid, '_ll_email', true);
+                $items = get_post_meta($pid, '_ll_items', true);
+                $itemsText = [];
+                if (is_array($items)) { foreach ($items as $li) { $itemsText[] = (isset($li['sku'])?$li['sku']:'') . ' × ' . (isset($li['quantity'])?(int)$li['quantity']:1); } }
+                echo '<tr>';
+                echo '<td>' . esc_html(get_the_date('Y-m-d H:i')) . '</td>';
+                echo '<td>' . esc_html($origin) . '</td>';
+                echo '<td>' . esc_html($rid) . '</td>';
+                echo '<td>' . esc_html($email) . '</td>';
+                echo '<td>' . esc_html(implode(', ', $itemsText)) . '</td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table>';
+            wp_reset_postdata();
+        } else {
+            $log = get_option('ll_mirrored_orders', []);
+            if (!empty($log) && is_array($log)) {
+                echo '<table class="widefat striped"><thead><tr>';
+                echo '<th>' . esc_html__('Date', 'licenceland') . '</th>';
+                echo '<th>' . esc_html__('Origin', 'licenceland') . '</th>';
+                echo '<th>' . esc_html__('Remote ID', 'licenceland') . '</th>';
+                echo '<th>' . esc_html__('Email', 'licenceland') . '</th>';
+                echo '<th>' . esc_html__('Items', 'licenceland') . '</th>';
+                echo '</tr></thead><tbody>';
+                foreach (array_reverse($log) as $entry) {
+                    $when = isset($entry['ts']) ? date('Y-m-d H:i', (int)$entry['ts']) : '';
+                    $origin = isset($entry['origin']) ? (string)$entry['origin'] : '';
+                    $rid = isset($entry['remote_order_id']) ? (string)$entry['remote_order_id'] : '';
+                    $email = isset($entry['email']) ? (string)$entry['email'] : '';
+                    $items = isset($entry['items']) && is_array($entry['items']) ? $entry['items'] : [];
+                    $itemsText = [];
+                    foreach ($items as $li) { $itemsText[] = (isset($li['sku'])?$li['sku']:'') . ' × ' . (isset($li['quantity'])?(int)$li['quantity']:1); }
+                    echo '<tr>';
+                    echo '<td>' . esc_html($when) . '</td>';
+                    echo '<td>' . esc_html($origin) . '</td>';
+                    echo '<td>' . esc_html($rid) . '</td>';
+                    echo '<td>' . esc_html($email) . '</td>';
+                    echo '<td>' . esc_html(implode(', ', $itemsText)) . '</td>';
+                    echo '</tr>';
+                }
+                echo '</tbody></table>';
+            } else {
+                echo '<p>' . esc_html__('No mirrored orders yet.', 'licenceland') . '</p>';
+            }
+        }
+        echo '</div>';
     }
 
     public function register_cpt() {
