@@ -168,6 +168,8 @@ class LicenceLand_Sync {
         update_post_meta($product_id, '_manage_stock', 'no');
         update_post_meta($product_id, '_backorders', 'yes');
         update_post_meta($product_id, '_stock_status', 'instock');
+        // Try to fulfill any queued backorders for this product
+        $this->process_mirror_backorders((int)$product_id);
         // Fan-out from Primary by pushing full product payload
         $this->push_product((int)$product_id);
         return new WP_REST_Response(['ok' => true, 'added' => count($keys), 'total' => count($merged)], 200);
@@ -193,6 +195,8 @@ class LicenceLand_Sync {
         update_post_meta($product_id, '_manage_stock', 'no');
         update_post_meta($product_id, '_backorders', 'yes');
         update_post_meta($product_id, '_stock_status', 'instock');
+        // Try to fulfill any queued backorders for this product
+        $this->process_mirror_backorders((int)$product_id);
         // Fan-out from Primary by pushing full product payload
         $this->push_product((int)$product_id);
         return new WP_REST_Response(['ok' => true, 'total' => count($keys)], 200);
@@ -255,6 +259,67 @@ class LicenceLand_Sync {
     private function get_header(string $name): string {
         $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
         return isset($_SERVER[$key]) ? (string) $_SERVER[$key] : '';
+    }
+
+    // --- CD keys helpers and mirror backorders ---
+    private function get_product_keys(int $productId): array {
+        $keys = get_post_meta($productId, '_cd_keys', true);
+        if (is_string($keys)) { $keys = array_filter(array_map('trim', preg_split('/[\r\n]+/', $keys))); }
+        if (!is_array($keys)) { $keys = (array)$keys; }
+        return array_values(array_unique(array_map('trim', $keys)));
+    }
+    private function set_product_keys(int $productId, array $keys): void {
+        update_post_meta($productId, '_cd_keys', array_values($keys));
+        // keep always orderable
+        update_post_meta($productId, '_manage_stock', 'no');
+        update_post_meta($productId, '_backorders', 'yes');
+        update_post_meta($productId, '_stock_status', 'instock');
+    }
+    private function add_mirror_backorder(int $productId, int $quantity, string $email, array $context): void {
+        $all = get_option('ll_mirror_backorders', []);
+        if (!is_array($all)) { $all = []; }
+        if (!isset($all[$productId]) || !is_array($all[$productId])) { $all[$productId] = []; }
+        $all[$productId][] = [
+            'qty' => max(1, $quantity),
+            'email' => $email,
+            'ctx' => $context,
+            'ts' => time(),
+            'status' => 'pending',
+        ];
+        update_option('ll_mirror_backorders', $all);
+    }
+    private function process_mirror_backorders(int $productId): void {
+        $all = get_option('ll_mirror_backorders', []);
+        if (!is_array($all) || empty($all[$productId])) { return; }
+        $queue = $all[$productId];
+        $keys = $this->get_product_keys($productId);
+        $assignedAny = false;
+        foreach ($queue as $idx => $entry) {
+            $need = (int)($entry['qty'] ?? 0);
+            if ($need <= 0) { continue; }
+            if (count($keys) < $need) { continue; }
+            $give = [];
+            for ($i=0;$i<$need;$i++){ $give[] = array_shift($keys); }
+            // Save remaining keys
+            $this->set_product_keys($productId, $keys);
+            $assignedAny = true;
+            // Email to customer
+            $email = (string)($entry['email'] ?? '');
+            if ($email) {
+                $title = get_the_title($productId);
+                $subject = sprintf(__('Your CD Keys from %s', 'licenceland'), wp_parse_url(home_url(), PHP_URL_HOST));
+                $lines = [$title . ': ' . implode(', ', $give)];
+                wp_mail($email, $subject, wpautop(implode("\n", $lines)));
+            }
+            // mark processed
+            $queue[$idx]['status'] = 'processed';
+            $queue[$idx]['processed_at'] = time();
+        }
+        // remove processed
+        $queue = array_values(array_filter($queue, function($e){ return ($e['status'] ?? '') !== 'processed'; }));
+        $all[$productId] = $queue;
+        update_option('ll_mirror_backorders', $all);
+        if ($assignedAny) { $this->push_product($productId); }
     }
 
     // Signed request to a specific remote URL

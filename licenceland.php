@@ -2,7 +2,7 @@
 /**
  * Plugin Name: LicenceLand - Unified E-commerce Solution
  * Description: Comprehensive e-commerce solution featuring CD Key management, dual shop functionality (Lakossági/Üzleti), and advanced WooCommerce integration.
- * Version: 1.0.50
+ * Version: 1.0.51
  * Author: ZeusWeb
  * Text Domain: licenceland
  * Domain Path: /languages
@@ -29,7 +29,7 @@ if (defined('LICENCELAND_BOOTSTRAPPED')) {
 define('LICENCELAND_BOOTSTRAPPED', true);
 
 // Define plugin constants
-define('LICENCELAND_VERSION', '1.0.50');
+define('LICENCELAND_VERSION', '1.0.51');
 define('LICENCELAND_PLUGIN_FILE', __FILE__);
 define('LICENCELAND_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LICENCELAND_PLUGIN_URL', plugin_dir_url(__FILE__));
