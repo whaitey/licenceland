@@ -19,7 +19,8 @@ class LicenceLand_Core {
         add_action('wp_enqueue_scripts', [$this, 'frontend_scripts']);
         add_action('admin_notices', [$this, 'admin_notices']);
         add_filter('plugin_action_links_' . LICENCELAND_PLUGIN_BASENAME, [$this, 'plugin_action_links']);
-        add_action('init', [$this, 'register_cpt'], 0);
+        // Register CPT as early as possible so list tables always recognize it
+        add_action('plugins_loaded', [$this, 'register_cpt'], 0);
         
         // Handle payment-based order creation
         $this->handle_payment_based_order_creation();
@@ -703,6 +704,7 @@ class LicenceLand_Core {
             'capability_type' => 'post',
             'map_meta_cap' => false,
             'supports' => ['title','custom-fields'],
+            'rewrite' => false,
         ]);
     }
 
