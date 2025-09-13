@@ -760,6 +760,16 @@ class LicenceLand_Settings {
                 <span id="ll-push-remote-payments-result" style="margin-left:10px;"></span>
             </p>
 
+            <?php if (function_exists('licenceland') && licenceland()->sync && licenceland()->sync->is_primary_site()) : ?>
+            <hr>
+            <h2><?php _e('Primary: Push All Products to Remotes', 'licenceland'); ?></h2>
+            <p><?php _e('Batch-pushes the full product catalog (title, content, pricing, taxonomies, images, CD keys config) to all configured Secondary sites.', 'licenceland'); ?></p>
+            <p>
+                <button type="button" class="button" id="ll-push-all-products"><?php _e('Push All Products', 'licenceland'); ?></button>
+                <span id="ll-push-all-products-result" style="margin-left:10px;"></span>
+            </p>
+            <?php endif; ?>
+
             <hr>
             <h2><?php _e('Primary: Secondary Remotes (URLs)', 'licenceland'); ?></h2>
             <p><?php _e('On the Primary site, list all Secondary site URLs below (one per line). All remotes use the Shared Secret above.', 'licenceland'); ?></p>
@@ -795,6 +805,40 @@ class LicenceLand_Settings {
                     if (resp && resp.success) { result.text('<?php echo esc_js(__('Pushed successfully.', 'licenceland')); ?>').addClass('ok'); }
                     else { result.text((resp && resp.data) ? resp.data : '<?php echo esc_js(__('Push failed.', 'licenceland')); ?>').addClass('err'); }
                 }).fail(function(){ result.text('<?php echo esc_js(__('Push failed.', 'licenceland')); ?>').addClass('err'); });
+            });
+
+            $('#ll-push-all-products').on('click', function(){
+                var btn = $(this), res = $('#ll-push-all-products-result');
+                var page = 1, total = 0;
+                res.text('<?php echo esc_js(__('Starting...', 'licenceland')); ?>').removeClass('ok err');
+                btn.prop('disabled', true);
+                function step(){
+                    $.post(ajaxurl, {
+                        action: 'licenceland_push_all_products',
+                        nonce: '<?php echo wp_create_nonce('licenceland_sync'); ?>',
+                        page: page,
+                        per_page: 50
+                    }).done(function(resp){
+                        if (resp && resp.success) {
+                            total += (resp.data && resp.data.pushed) ? resp.data.pushed : 0;
+                            if (resp.data && resp.data.has_more) {
+                                page += 1;
+                                res.text('<?php echo esc_js(__('Pushed page', 'licenceland')); ?> ' + (page-1) + ' / ' + resp.data.total_pages + ' ...');
+                                step();
+                            } else {
+                                res.text('<?php echo esc_js(__('All products pushed. Total:', 'licenceland')); ?> ' + total).addClass('ok');
+                                btn.prop('disabled', false);
+                            }
+                        } else {
+                            res.text((resp && resp.data) ? resp.data : '<?php echo esc_js(__('Push failed.', 'licenceland')); ?>').addClass('err');
+                            btn.prop('disabled', false);
+                        }
+                    }).fail(function(){
+                        res.text('<?php echo esc_js(__('Push failed.', 'licenceland')); ?>').addClass('err');
+                        btn.prop('disabled', false);
+                    });
+                }
+                step();
             });
         });
         </script>

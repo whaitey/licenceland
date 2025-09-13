@@ -408,6 +408,7 @@ class LicenceLand_Core {
         add_action('wp_ajax_licenceland_force_update_check', [$this, 'force_update_check']);
         add_action('wp_ajax_licenceland_debug_update_checker', [$this, 'debug_update_checker']);
         add_action('wp_ajax_licenceland_push_remote_payments', [$this, 'push_remote_payments']);
+        add_action('wp_ajax_licenceland_push_all_products', [$this, 'push_all_products']);
         add_action('admin_notices', [$this, 'sync_push_result_notice']);
         
         // Add admin notice for update checker status
@@ -619,6 +620,40 @@ class LicenceLand_Core {
         }
         set_transient('licenceland_sync_push_notice', ['type' => 'error', 'msg' => (string)($res['error'] ?? __('Push failed.', 'licenceland'))], 60);
         wp_send_json_error(esc_html($res['error'] ?? __('Push failed.', 'licenceland')));
+    }
+
+    /**
+     * AJAX: Push all products to remotes (Primary only)
+     */
+    public function push_all_products() {
+        check_ajax_referer('licenceland_sync', 'nonce');
+        if (!current_user_can('manage_options')) { wp_die(); }
+        if (!function_exists('licenceland') || !licenceland()->sync) {
+            wp_send_json_error(__('Sync module unavailable.', 'licenceland'));
+        }
+        if (!licenceland()->sync->is_primary_site()) {
+            wp_send_json_error(__('This action is only available on the Primary site.', 'licenceland'));
+        }
+        $paged = isset($_POST['page']) ? max(1, (int) $_POST['page']) : 1;
+        $per = isset($_POST['per_page']) ? max(1, min(200, (int) $_POST['per_page'])) : 50;
+        $q = new WP_Query([
+            'post_type' => 'product',
+            'post_status' => ['publish','draft','pending','private'],
+            'fields' => 'ids',
+            'posts_per_page' => $per,
+            'paged' => $paged,
+        ]);
+        $ids = $q->posts ?: [];
+        foreach ($ids as $pid) {
+            licenceland()->sync->push_product_public((int)$pid);
+        }
+        $has_more = $q->max_num_pages > $paged;
+        wp_send_json_success([
+            'pushed' => count($ids),
+            'page' => $paged,
+            'has_more' => $has_more,
+            'total_pages' => (int)$q->max_num_pages,
+        ]);
     }
 
     public function sync_push_result_notice() {

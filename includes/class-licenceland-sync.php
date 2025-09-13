@@ -176,6 +176,9 @@ class LicenceLand_Sync {
         return $this->get_setting('ll_sync_mode', 'primary') === 'primary';
     }
 
+    // Public wrappers for external checks/calls
+    public function is_primary_site(): bool { return $this->is_primary(); }
+
     // Role-driven behavior: Primary pushes products; Secondary pushes orders. Keys always mirrored.
     private function is_products_enabled(): bool { return $this->is_primary(); }
     private function is_orders_enabled(): bool { return !$this->is_primary(); }
@@ -678,6 +681,11 @@ class LicenceLand_Sync {
         }
         $payload = json_encode($this->build_product_payload($product_id));
         $this->send_to_remote('POST', '/wp-json/licenceland/v1/sync/product', (string)$payload);
+    }
+
+    public function push_product_public(int $product_id): bool {
+        $this->push_product($product_id);
+        return true;
     }
 
     // Public wrapper returning response body/ok for AJAX proxy needs
