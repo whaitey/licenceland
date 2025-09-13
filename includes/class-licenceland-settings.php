@@ -247,54 +247,121 @@ class LicenceLand_Settings {
     public function keys_manager_page() {
         if (!current_user_can('manage_options')) { return; }
         $skus = isset($_POST['skus']) ? sanitize_text_field((string) $_POST['skus']) : '';
+        $product_ids = isset($_POST['product_ids']) ? array_map('absint', (array) $_POST['product_ids']) : [];
         $keys = isset($_POST['keys']) ? (string) $_POST['keys'] : '';
         $mode = isset($_POST['mode']) ? sanitize_text_field((string) $_POST['mode']) : 'append';
+        $paged = isset($_GET['ll_paged']) ? max(1, (int) $_GET['ll_paged']) : 1;
+        $per_page = 20;
+        $search = isset($_GET['ll_search']) ? sanitize_text_field((string) $_GET['ll_search']) : '';
         $ran = false;
         $result = '';
         if (!empty($_POST['ll_keys_nonce']) && wp_verify_nonce($_POST['ll_keys_nonce'], 'll_keys_manage')) {
             $ran = true;
             $isPrimary = function_exists('licenceland') && licenceland()->sync && licenceland()->sync->is_primary();
-            if ($skus !== '' && $isPrimary) {
-                $skuList = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,\s]+/', $skus)))));
+            $idsToUpdate = $product_ids;
+            if ($skus !== '') {
+                $skuListFromText = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,\s]+/', $skus)))));
+                foreach ($skuListFromText as $skuVal) {
+                    $pidBySku = wc_get_product_id_by_sku($skuVal);
+                    if ($pidBySku) { $idsToUpdate[] = (int) $pidBySku; }
+                }
+            }
+            $idsToUpdate = array_values(array_unique(array_filter(array_map('absint', $idsToUpdate))));
+            if (!empty($idsToUpdate) && $isPrimary) {
                 $keysList = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\r\n]+/', $keys)))));
-                $totalAffected = 0; $totalKeys = 0;
-                foreach ($skuList as $sku) {
-                    $pid = wc_get_product_id_by_sku($sku);
-                    if (!$pid) { continue; }
+                $totalAffected = 0;
+                foreach ($idsToUpdate as $pid) {
                     if ($mode === 'replace') {
                         update_post_meta($pid, '_cd_keys', $keysList);
-                        $totalKeys += count($keysList);
                     } else {
                         $existing = get_post_meta($pid, '_cd_keys', true);
                         if (is_string($existing)) { $existing = preg_split('/[\r\n]+/', $existing) ?: []; }
                         $existing = is_array($existing) ? $existing : [];
                         $merged = array_values(array_unique(array_merge($existing, $keysList)));
                         update_post_meta($pid, '_cd_keys', $merged);
-                        $totalKeys += count($merged);
                     }
                     $totalAffected++;
                 }
                 $result = sprintf(__('Updated %d products on Primary. Keys now set/merged.', 'licenceland'), $totalAffected);
-            } elseif ($skus !== '' && function_exists('licenceland') && licenceland()->sync) {
-                // Secondary: proxy to Primary via Sync API
+            } elseif (!empty($idsToUpdate) && function_exists('licenceland') && licenceland()->sync) {
                 $path = ($mode === 'replace') ? '/wp-json/licenceland/v1/sync/keys/replace' : '/wp-json/licenceland/v1/sync/keys/append';
-                $payload = json_encode(['sku' => trim((string)$skus), 'keys' => preg_split('/[\r\n]+/', (string)$keys)]);
-                $res = licenceland()->sync->send_to_remote_public('POST', $path, (string)$payload);
-                $result = !empty($res['ok']) ? __('Pushed key update to Primary successfully.', 'licenceland') : sprintf(__('Push failed: %s', 'licenceland'), (string)($res['error'] ?? 'unknown'));
+                $okCount = 0; $failCount = 0; $lastErr = '';
+                foreach ($idsToUpdate as $pid) {
+                    $skuVal = get_post_meta($pid, '_sku', true);
+                    if ($skuVal === '') { $failCount++; continue; }
+                    $payload = json_encode(['sku' => (string)$skuVal, 'keys' => preg_split('/[\r\n]+/', (string)$keys)]);
+                    $res = licenceland()->sync->send_to_remote_public('POST', $path, (string)$payload);
+                    if (!empty($res['ok'])) { $okCount++; } else { $failCount++; $lastErr = (string)($res['error'] ?? 'unknown'); }
+                }
+                $result = sprintf(__('Pushed updates for %d products to Primary. Failures: %d %s', 'licenceland'), $okCount, $failCount, $lastErr ? '(' . $lastErr . ')' : '');
             }
         }
+
+        // Query products for listing
+        $args = [
+            'post_type' => 'product',
+            'post_status' => ['publish','draft','pending','private'],
+            'fields' => 'ids',
+            'posts_per_page' => $per_page,
+            'paged' => $paged,
+        ];
+        if ($search !== '') {
+            $args['s'] = $search;
+            $args['meta_query'] = [
+                'relation' => 'OR',
+                [ 'key' => '_sku', 'value' => $search, 'compare' => 'LIKE' ],
+            ];
+        }
+        $q = new WP_Query($args);
+        $ids = $q->posts ?: [];
+        $max_pages = (int) $q->max_num_pages;
+        $base_url = remove_query_arg(['ll_paged'], $_SERVER['REQUEST_URI']);
+        $next_url = add_query_arg(['ll_paged' => $paged + 1, 'll_search' => $search], $base_url);
+        $prev_url = add_query_arg(['ll_paged' => max(1, $paged - 1), 'll_search' => $search], $base_url);
         ?>
         <div class="wrap">
             <h1><?php _e('CD Keys Manager', 'licenceland'); ?></h1>
             <?php if ($ran) : ?>
                 <div class="notice notice-success"><p><?php echo esc_html($result); ?></p></div>
             <?php endif; ?>
+            <form method="get" style="margin-bottom:12px;">
+                <input type="hidden" name="page" value="licenceland-keys-manager" />
+                <input type="search" name="ll_search" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Search by title or SKU', 'licenceland'); ?>" />
+                <button class="button"><?php _e('Filter', 'licenceland'); ?></button>
+            </form>
             <form method="post">
                 <?php wp_nonce_field('ll_keys_manage', 'll_keys_nonce'); ?>
+                <table class="widefat striped">
+                    <thead>
+                        <tr>
+                            <th style="width:28px;"><input type="checkbox" id="ll-select-all" /></th>
+                            <th><?php _e('Product', 'licenceland'); ?></th>
+                            <th><?php _e('SKU', 'licenceland'); ?></th>
+                            <th><?php _e('ID', 'licenceland'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($ids)) : ?>
+                        <tr><td colspan="4"><?php _e('No products found.', 'licenceland'); ?></td></tr>
+                    <?php else : foreach ($ids as $pid) : $skuVal = get_post_meta($pid, '_sku', true); ?>
+                        <tr>
+                            <td><input type="checkbox" name="product_ids[]" value="<?php echo esc_attr($pid); ?>" /></td>
+                            <td><a href="<?php echo esc_url(get_edit_post_link($pid)); ?>" target="_blank"><?php echo esc_html(get_the_title($pid)); ?></a></td>
+                            <td><code><?php echo esc_html($skuVal ?: '-'); ?></code></td>
+                            <td><?php echo (int) $pid; ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+                <p style="margin-top:8px;">
+                    <?php if ($paged > 1) : ?><a class="button" href="<?php echo esc_url($prev_url); ?>">&laquo; <?php _e('Prev', 'licenceland'); ?></a><?php endif; ?>
+                    <?php if ($paged < $max_pages) : ?><a class="button" href="<?php echo esc_url($next_url); ?>"><?php _e('Next', 'licenceland'); ?> &raquo;</a><?php endif; ?>
+                    <span style="margin-left:10px; color:#666;"><?php printf(__('Page %d of %d', 'licenceland'), $paged, max(1, $max_pages)); ?></span>
+                </p>
                 <table class="form-table">
                     <tr>
-                        <th><label for="skus"><?php _e('Product SKUs (comma or space separated)', 'licenceland'); ?></label></th>
-                        <td><input type="text" id="skus" name="skus" class="regular-text" /></td>
+                        <th><label for="skus"><?php _e('Product SKUs (optional)', 'licenceland'); ?></label></th>
+                        <td><input type="text" id="skus" name="skus" class="regular-text" placeholder="<?php esc_attr_e('You can also select products above', 'licenceland'); ?>" /></td>
                     </tr>
                     <tr>
                         <th><label for="keys"><?php _e('CD Keys (one per line)', 'licenceland'); ?></label></th>
@@ -312,6 +379,13 @@ class LicenceLand_Settings {
                 <?php submit_button(__('Apply', 'licenceland')); ?>
             </form>
         </div>
+        <script>
+        jQuery(function($){
+            $('#ll-select-all').on('change', function(){
+                $('input[name="product_ids[]"]').prop('checked', $(this).is(':checked'));
+            });
+        });
+        </script>
         <?php
     }
     
