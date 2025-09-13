@@ -2,7 +2,7 @@
 /**
  * Plugin Name: LicenceLand - Unified E-commerce Solution
  * Description: Comprehensive e-commerce solution featuring CD Key management, dual shop functionality (Lakossági/Üzleti), and advanced WooCommerce integration.
- * Version: 1.0.37
+ * Version: 1.0.38
  * Author: ZeusWeb
  * Text Domain: licenceland
  * Domain Path: /languages
@@ -29,7 +29,7 @@ if (defined('LICENCELAND_BOOTSTRAPPED')) {
 define('LICENCELAND_BOOTSTRAPPED', true);
 
 // Define plugin constants
-define('LICENCELAND_VERSION', '1.0.37');
+define('LICENCELAND_VERSION', '1.0.38');
 define('LICENCELAND_PLUGIN_FILE', __FILE__);
 define('LICENCELAND_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('LICENCELAND_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -79,6 +79,19 @@ $licencelandUpdateChecker->setBranch('main');
 $vcsApi = $licencelandUpdateChecker->getVcsApi();
 if ($vcsApi && method_exists($vcsApi, 'enableReleaseAssets')) {
     $vcsApi->enableReleaseAssets();
+}
+// Optional: GitHub token to avoid 403 rate limits
+$ghToken = get_option('licenceland_github_token', '');
+if (!empty($ghToken) && $vcsApi && method_exists($vcsApi, 'setAuthentication')) {
+    $vcsApi->setAuthentication($ghToken);
+}
+// Optional: toggle release assets
+if ($vcsApi && method_exists($vcsApi, 'enableReleaseAssets')) {
+    if (get_option('licenceland_use_release_assets', 'no') === 'yes') {
+        $vcsApi->enableReleaseAssets();
+    } else if (method_exists($vcsApi, 'disableReleaseAssets')) {
+        $vcsApi->disableReleaseAssets();
+    }
 }
 
 // Helper to force an immediate PUC check when requested

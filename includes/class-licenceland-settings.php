@@ -145,6 +145,9 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_max_reminders', [ 'type'=>'integer', 'sanitize_callback'=>$intKeep('licenceland_abandoned_cart_max_reminders',3), 'default'=>3 ]);
         register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_subject', [ 'type'=>'string', 'sanitize_callback'=>$textKeep('licenceland_abandoned_cart_email_subject',__('You left something in your cart!','licenceland')), 'default'=>__('You left something in your cart!','licenceland') ]);
         register_setting(self::OPTION_GROUP, 'licenceland_abandoned_cart_email_template', [ 'type'=>'string', 'sanitize_callback'=>$htmlKeep('licenceland_abandoned_cart_email_template',$this->get_default_abandoned_cart_template()), 'default'=>$this->get_default_abandoned_cart_template() ]);
+        // Update checker settings
+        register_setting(self::OPTION_GROUP, 'licenceland_github_token', [ 'type'=>'string', 'sanitize_callback'=>function($v){ $s = is_scalar($v)?(string)$v:''; return trim($s); } ]);
+        register_setting(self::OPTION_GROUP, 'licenceland_use_release_assets', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('licenceland_use_release_assets','no'), 'default'=>'no' ]);
         
         // CD Keys settings
         register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_default_threshold', [ 'type'=>'integer', 'sanitize_callback'=>$intKeep('licenceland_cd_keys_default_threshold',5), 'default'=>5 ]);
@@ -522,6 +525,24 @@ class LicenceLand_Settings {
                         <td>
                             <input type="checkbox" id="licenceland_payment_based_orders" name="licenceland_payment_based_orders" value="yes" <?php checked(get_option('licenceland_payment_based_orders', 'yes'), 'yes'); ?>>
                             <p class="description"><?php _e('Only create orders after successful payment completion. Prevents orders from being created before payment is processed.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_github_token"><?php _e('GitHub Token (for updates)', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <input type="text" id="licenceland_github_token" name="licenceland_github_token" value="<?php echo esc_attr(get_option('licenceland_github_token', '')); ?>" class="regular-text" />
+                            <p class="description"><?php _e('Optional. Increases GitHub API limits for the built-in update checker. Fine-grained: grant read access to this repo.', 'licenceland'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="licenceland_use_release_assets"><?php _e('Use GitHub Release Assets', 'licenceland'); ?></label>
+                        </th>
+                        <td>
+                            <input type="checkbox" id="licenceland_use_release_assets" name="licenceland_use_release_assets" value="yes" <?php checked(get_option('licenceland_use_release_assets', 'no'), 'yes'); ?>>
+                            <p class="description"><?php _e('Enable if you publish release ZIPs on GitHub. Leave off if using branch/tag downloads.', 'licenceland'); ?></p>
                         </td>
                     </tr>
                 </table>
