@@ -1030,6 +1030,9 @@ class LicenceLand_Sync {
             $pid = wc_get_product_id_by_sku($sku);
             if (!$pid) { continue; }
             $keys = $this->get_product_keys((int)$pid);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[LicenceLand Sync] Mirror: SKU ' . $sku . ' qty ' . $qty . ' available ' . count($keys));
+            }
             $give = [];
             for ($i = 0; $i < $qty && !empty($keys); $i++) {
                 $give[] = array_shift($keys);
@@ -1042,10 +1045,16 @@ class LicenceLand_Sync {
                 $queuedAny = true;
                 $emailAddr = isset($billing['email']) ? (string)$billing['email'] : '';
                 $this->add_mirror_backorder((int)$pid, (int)$missing, $emailAddr, ['origin' => $originSite, 'remote_order_id' => $remoteOrderId]);
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[LicenceLand Sync] Mirror: queued backorder for SKU ' . $sku . ' missing ' . $missing);
+                }
             }
             if (!empty($give)) {
                 // Collect for email fan-out
                 $assigned[] = [ 'product_id' => $pid, 'sku' => $sku, 'keys' => $give ];
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[LicenceLand Sync] Mirror: assigned ' . count($give) . ' keys for SKU ' . $sku);
+                }
             }
             // Fan-out updated product to secondaries regardless so counts reflect
             $this->push_product((int)$pid);
@@ -1067,12 +1076,18 @@ class LicenceLand_Sync {
                 if ($admin) {
                     wp_mail($admin, '[LicenceLand] ' . $subject, wpautop(implode("\n", $lines)));
                 }
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[LicenceLand Sync] Mirror: sent keys email to ' . $email);
+                }
             }
             if ($queuedAny) {
                 // Send backorder notice for remaining items
                 $subjectBO = sprintf(__('CD Keys Backorder from %s', 'licenceland'), wp_parse_url(home_url(), PHP_URL_HOST));
                 $msgBO = __('We received your order. Your remaining CD key(s) will be delivered within 24 hours as soon as stock is replenished.', 'licenceland');
                 wp_mail($email, $subjectBO, wpautop($msgBO));
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[LicenceLand Sync] Mirror: sent backorder email to ' . $email);
+                }
             }
         }
         // Store mirror record (post type or option) — minimal: add to an option log
