@@ -78,6 +78,18 @@ class LicenceLand_Sync {
             'callback' => [$this, 'route_update_remote_payments'],
             'permission_callback' => [$this, 'verify_hmac_request'],
         ]);
+
+        // CD Keys management (Primary): append/replace via SKU
+        register_rest_route('licenceland/v1', '/sync/keys/append', [
+            'methods' => 'POST',
+            'callback' => [$this, 'route_keys_append'],
+            'permission_callback' => [$this, 'verify_hmac_request'],
+        ]);
+        register_rest_route('licenceland/v1', '/sync/keys/replace', [
+            'methods' => 'POST',
+            'callback' => [$this, 'route_keys_replace'],
+            'permission_callback' => [$this, 'verify_hmac_request'],
+        ]);
     }
 
     private function get_setting(string $key, $default = '') {
@@ -100,6 +112,60 @@ class LicenceLand_Sync {
             return $val;
         }
         return get_option($key, $default);
+    }
+
+    private function normalize_keys_array($keys): array {
+        if (is_string($keys)) {
+            $keys = preg_split('/[\r\n]+/', $keys) ?: [];
+        }
+        $keys = array_map(function($k){ return sanitize_text_field((string)$k); }, (array)$keys);
+        $keys = array_values(array_unique(array_filter(array_map('trim', $keys))));
+        return $keys;
+    }
+
+    // Primary: Append keys to product by SKU
+    public function route_keys_append(WP_REST_Request $request) {
+        $data = json_decode($request->get_body(), true);
+        if (!is_array($data)) {
+            return new WP_REST_Response(['error' => 'invalid_body'], 400);
+        }
+        $sku = isset($data['sku']) ? (string)$data['sku'] : '';
+        $keys = $this->normalize_keys_array($data['keys'] ?? []);
+        if ($sku === '' || empty($keys)) {
+            return new WP_REST_Response(['error' => 'missing_params'], 400);
+        }
+        $product_id = wc_get_product_id_by_sku($sku);
+        if (!$product_id) {
+            return new WP_REST_Response(['error' => 'product_not_found'], 404);
+        }
+        $existing = get_post_meta($product_id, '_cd_keys', true);
+        if (is_string($existing)) {
+            $existing = preg_split('/[\r\n]+/', $existing) ?: [];
+        }
+        $existing = is_array($existing) ? $existing : [];
+        $existing = $this->normalize_keys_array($existing);
+        $merged = array_values(array_unique(array_merge($existing, $keys)));
+        update_post_meta($product_id, '_cd_keys', $merged);
+        return new WP_REST_Response(['ok' => true, 'added' => count($keys), 'total' => count($merged)], 200);
+    }
+
+    // Primary: Replace keys for product by SKU
+    public function route_keys_replace(WP_REST_Request $request) {
+        $data = json_decode($request->get_body(), true);
+        if (!is_array($data)) {
+            return new WP_REST_Response(['error' => 'invalid_body'], 400);
+        }
+        $sku = isset($data['sku']) ? (string)$data['sku'] : '';
+        $keys = $this->normalize_keys_array($data['keys'] ?? []);
+        if ($sku === '') {
+            return new WP_REST_Response(['error' => 'missing_params'], 400);
+        }
+        $product_id = wc_get_product_id_by_sku($sku);
+        if (!$product_id) {
+            return new WP_REST_Response(['error' => 'product_not_found'], 404);
+        }
+        update_post_meta($product_id, '_cd_keys', $keys);
+        return new WP_REST_Response(['ok' => true, 'total' => count($keys)], 200);
     }
 
     private function is_primary(): bool {

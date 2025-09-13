@@ -60,6 +60,14 @@ class LicenceLand_Settings {
             'licenceland-cd-keys',
             [$this, 'cd_keys_settings_page']
         );
+        add_submenu_page(
+            self::MENU_SLUG,
+            __('CD Keys Manager', 'licenceland'),
+            __('CD Keys Manager', 'licenceland'),
+            'manage_options',
+            'licenceland-keys-manager',
+            [$this, 'keys_manager_page']
+        );
         
         add_submenu_page(
             self::MENU_SLUG,
@@ -234,6 +242,69 @@ class LicenceLand_Settings {
             },
             'default' => []
         ]);
+    }
+
+    public function keys_manager_page() {
+        if (!current_user_can('manage_options')) { return; }
+        $skus = isset($_POST['skus']) ? sanitize_text_field((string) $_POST['skus']) : '';
+        $keys = isset($_POST['keys']) ? (string) $_POST['keys'] : '';
+        $mode = isset($_POST['mode']) ? sanitize_text_field((string) $_POST['mode']) : 'append';
+        $result = '';
+        if (!empty($_POST['ll_keys_nonce']) && wp_verify_nonce($_POST['ll_keys_nonce'], 'll_keys_manage')) {
+            // Local apply for Primary; Secondaries are expected to proxy to Primary via Sync (handled elsewhere in UI/scripts)
+            if ($skus !== '') {
+                $skuList = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,\s]+/', $skus)))));
+                $keysList = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\r\n]+/', $keys)))));
+                $totalAffected = 0; $totalKeys = 0;
+                foreach ($skuList as $sku) {
+                    $pid = wc_get_product_id_by_sku($sku);
+                    if (!$pid) { continue; }
+                    if ($mode === 'replace') {
+                        update_post_meta($pid, '_cd_keys', $keysList);
+                        $totalKeys += count($keysList);
+                    } else {
+                        $existing = get_post_meta($pid, '_cd_keys', true);
+                        if (is_string($existing)) { $existing = preg_split('/[\r\n]+/', $existing) ?: []; }
+                        $existing = is_array($existing) ? $existing : [];
+                        $merged = array_values(array_unique(array_merge($existing, $keysList)));
+                        update_post_meta($pid, '_cd_keys', $merged);
+                        $totalKeys += count($merged);
+                    }
+                    $totalAffected++;
+                }
+                $result = sprintf(__('Updated %d products. Keys now set/merged.', 'licenceland'), $totalAffected);
+            }
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php _e('CD Keys Manager', 'licenceland'); ?></h1>
+            <?php if ($result) : ?>
+                <div class="notice notice-success"><p><?php echo esc_html($result); ?></p></div>
+            <?php endif; ?>
+            <form method="post">
+                <?php wp_nonce_field('ll_keys_manage', 'll_keys_nonce'); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="skus"><?php _e('Product SKUs (comma or space separated)', 'licenceland'); ?></label></th>
+                        <td><input type="text" id="skus" name="skus" class="regular-text" /></td>
+                    </tr>
+                    <tr>
+                        <th><label for="keys"><?php _e('CD Keys (one per line)', 'licenceland'); ?></label></th>
+                        <td><textarea id="keys" name="keys" rows="8" class="large-text code"></textarea></td>
+                    </tr>
+                    <tr>
+                        <th><?php _e('Mode', 'licenceland'); ?></th>
+                        <td>
+                            <label><input type="radio" name="mode" value="append" checked> <?php _e('Append', 'licenceland'); ?></label>
+                            &nbsp;&nbsp;
+                            <label><input type="radio" name="mode" value="replace"> <?php _e('Replace', 'licenceland'); ?></label>
+                        </td>
+                    </tr>
+                </table>
+                <?php submit_button(__('Apply', 'licenceland')); ?>
+            </form>
+        </div>
+        <?php
     }
     
     /**
