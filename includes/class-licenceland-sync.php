@@ -526,6 +526,13 @@ class LicenceLand_Sync {
         $post = get_post($object_id);
         if ($post && $post->post_type === 'product') {
             if ($this->is_primary()) {
+                // If keys changed on Primary via admin, attempt to fulfill any queued mirror backorders
+                if ($meta_key === '_cd_keys') {
+                    $this->process_mirror_backorders((int)$object_id);
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('[LicenceLand Sync] Keys changed on Primary; processed backorders for product ' . (int)$object_id);
+                    }
+                }
                 // Primary fan-out
                 $this->push_product((int)$object_id);
             } else {
