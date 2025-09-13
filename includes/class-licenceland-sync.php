@@ -19,9 +19,7 @@ class LicenceLand_Sync {
     public function init() {
         add_action('rest_api_init', [$this, 'register_routes']);
 
-        // Product change hooks (create/update/delete)
-        add_action('save_post_product', [$this, 'maybe_push_product'], 20, 3);
-        add_action('before_delete_post', [$this, 'maybe_push_product_delete'], 10, 1);
+        // Product change hooks disabled: pushing is now manual via Sync UI
 
         // Order push (Secondary -> Primary)
         add_action('woocommerce_checkout_order_processed', [$this, 'maybe_push_order'], 20, 1);
@@ -379,46 +377,9 @@ class LicenceLand_Sync {
     }
 
     // Outbound push (Primary only)
-    public function maybe_push_product($post_id, $post, $update) {
-        if (self::$isSyncRequest) {
-            return; // Prevent loops
-        }
-        if (!$this->is_primary() || !$this->is_products_enabled()) {
-            return;
-        }
-        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-            return;
-        }
-        if ($post->post_type !== 'product') {
-            return;
-        }
+    public function maybe_push_product($post_id, $post, $update) { /* disabled */ }
 
-        $sku = get_post_meta($post_id, '_sku', true);
-        if ($sku === '') {
-            return; // Only sync products with SKU identity
-        }
-
-        $this->push_product($post_id);
-    }
-
-    public function maybe_push_product_delete($post_id) {
-        if (self::$isSyncRequest) {
-            return;
-        }
-        $post = get_post($post_id);
-        if (!$post || $post->post_type !== 'product') {
-            return;
-        }
-        if (!$this->is_primary() || !$this->is_products_enabled()) {
-            return;
-        }
-        $sku = get_post_meta($post_id, '_sku', true);
-        if ($sku === '') {
-            return;
-        }
-        $path = '/wp-json/licenceland/v1/sync/product/' . rawurlencode($sku);
-        $this->send_to_remote('DELETE', $path, '');
-    }
+    public function maybe_push_product_delete($post_id) { /* disabled */ }
 
     // If the CD keys/config meta changes, push the product payload to propagate changes
     public function maybe_push_keys_on_change($meta_id, $object_id, $meta_key, $_meta_value) {
