@@ -144,6 +144,12 @@ class LicenceLand_Sync {
         $existing = $this->normalize_keys_array($existing);
         $merged = array_values(array_unique(array_merge($existing, $keys)));
         update_post_meta($product_id, '_cd_keys', $merged);
+        // Update Woo stock from remaining keys
+        $remaining = is_array($merged) ? count($merged) : 0;
+        update_post_meta($product_id, '_manage_stock', 'yes');
+        update_post_meta($product_id, '_backorders', 'no');
+        if (function_exists('wc_update_product_stock')) { wc_update_product_stock($product_id, (int)$remaining); }
+        update_post_meta($product_id, '_stock_status', $remaining > 0 ? 'instock' : 'outofstock');
         // Fan-out from Primary by pushing full product payload
         $this->push_product((int)$product_id);
         return new WP_REST_Response(['ok' => true, 'added' => count($keys), 'total' => count($merged)], 200);
@@ -165,6 +171,12 @@ class LicenceLand_Sync {
             return new WP_REST_Response(['error' => 'product_not_found'], 404);
         }
         update_post_meta($product_id, '_cd_keys', $keys);
+        // Update Woo stock from remaining keys
+        $remaining = is_array($keys) ? count($keys) : 0;
+        update_post_meta($product_id, '_manage_stock', 'yes');
+        update_post_meta($product_id, '_backorders', 'no');
+        if (function_exists('wc_update_product_stock')) { wc_update_product_stock($product_id, (int)$remaining); }
+        update_post_meta($product_id, '_stock_status', $remaining > 0 ? 'instock' : 'outofstock');
         // Fan-out from Primary by pushing full product payload
         $this->push_product((int)$product_id);
         return new WP_REST_Response(['ok' => true, 'total' => count($keys)], 200);
@@ -851,6 +863,12 @@ class LicenceLand_Sync {
         // Deduplicate remaining keys and reindex
         $keys = array_values(array_unique(array_map('trim', $keys)));
         update_post_meta($productId, '_cd_keys', $keys);
+        // Update Woo stock from remaining keys
+        $remaining = is_array($keys) ? count($keys) : 0;
+        update_post_meta($productId, '_manage_stock', 'yes');
+        update_post_meta($productId, '_backorders', 'no');
+        if (function_exists('wc_update_product_stock')) { wc_update_product_stock($productId, (int)$remaining); }
+        update_post_meta($productId, '_stock_status', $remaining > 0 ? 'instock' : 'outofstock');
         $this->log_cd_key_usage($assigned, $productId, $order->get_id(), $itemId);
 
         // Send email with product template
