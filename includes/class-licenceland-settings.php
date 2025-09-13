@@ -171,16 +171,14 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_default_threshold', [ 'type'=>'integer', 'sanitize_callback'=>$intKeep('licenceland_cd_keys_default_threshold',5), 'default'=>5 ]);
         register_setting(self::OPTION_GROUP, 'licenceland_cd_keys_auto_assign_default', [ 'type'=>'string', 'sanitize_callback'=>$yesNoKeep('licenceland_cd_keys_auto_assign_default','yes'), 'default'=>'yes' ]);
         
-        // Dual Shop settings (register under both the main group and a dedicated group to avoid cross-form resets)
+        // Dual Shop settings must live ONLY under a dedicated group to avoid resets when saving other pages
         $dual_shop_group = 'licenceland_dual_shop';
-        foreach ([self::OPTION_GROUP, $dual_shop_group] as $grp) {
-            register_setting($grp, 'ds_lak_header_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
-            register_setting($grp, 'ds_uzl_header_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
-            register_setting($grp, 'ds_lak_footer_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
-            register_setting($grp, 'ds_uzl_footer_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
-            register_setting($grp, 'ds_lak_product_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
-            register_setting($grp, 'ds_uzl_product_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
-        }
+        register_setting($dual_shop_group, 'ds_lak_header_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting($dual_shop_group, 'ds_uzl_header_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting($dual_shop_group, 'ds_lak_footer_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting($dual_shop_group, 'ds_uzl_footer_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting($dual_shop_group, 'ds_lak_product_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
+        register_setting($dual_shop_group, 'ds_uzl_product_id', [ 'type'=>'integer', 'sanitize_callback'=>function($v){ return absint($v); }, 'default'=>0 ]);
         
         $sanitize_payments = function($value){
             // Allow clearing to empty array (when hidden field posts empty) and filter empties
@@ -189,16 +187,10 @@ class LicenceLand_Settings {
             $arr = array_values(array_filter($arr, function($v){ return $v !== '' && $v !== null; }));
             return $arr;
         };
-        register_setting(self::OPTION_GROUP, 'ds_lak_payments', [ 'type' => 'array', 'sanitize_callback' => $sanitize_payments ]);
         register_setting($dual_shop_group, 'ds_lak_payments', [ 'type' => 'array', 'sanitize_callback' => $sanitize_payments ]);
-        
-        register_setting(self::OPTION_GROUP, 'ds_uzl_payments', [ 'type' => 'array', 'sanitize_callback' => $sanitize_payments ]);
         register_setting($dual_shop_group, 'ds_uzl_payments', [ 'type' => 'array', 'sanitize_callback' => $sanitize_payments ]);
-        
-        register_setting(self::OPTION_GROUP, 'ds_banned_ips', [ 'type' => 'string', 'sanitize_callback' => function($value) { $str = is_scalar($value) ? (string)$value : ''; return preg_replace('/[^\d\.\:\n\r ]/', '', $str); } ]);
+
         register_setting($dual_shop_group, 'ds_banned_ips', [ 'type' => 'string', 'sanitize_callback' => function($value) { $str = is_scalar($value) ? (string)$value : ''; return preg_replace('/[^\d\.\:\n\r ]/', '', $str); } ]);
-        
-        register_setting(self::OPTION_GROUP, 'ds_banned_emails', [ 'type' => 'string', 'sanitize_callback' => function($value) { $str = is_scalar($value) ? (string)$value : ''; return preg_replace('/[^\w\.@\-\+\_\n\r ]/', '', $str); } ]);
         register_setting($dual_shop_group, 'ds_banned_emails', [ 'type' => 'string', 'sanitize_callback' => function($value) { $str = is_scalar($value) ? (string)$value : ''; return preg_replace('/[^\w\.@\-\+\_\n\r ]/', '', $str); } ]);
 
         // Sync
