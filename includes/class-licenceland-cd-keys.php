@@ -258,10 +258,6 @@ class LicenceLand_CD_Keys {
      * Assign CD key to order item
      */
     public function assign_cd_key_to_order_item($item, $cart_item_key, $values, $order) {
-        // Only assign and decrement keys on the Primary site to avoid double-decrements across sites
-        if (function_exists('licenceland') && licenceland()->sync && method_exists(licenceland()->sync, 'is_primary_site') && !licenceland()->sync->is_primary_site()) {
-            return;
-        }
         $product_id = $item->get_product_id();
         $qty = $item->get_quantity();
         $keys = get_post_meta($product_id, '_cd_keys', true);
@@ -533,10 +529,6 @@ class LicenceLand_CD_Keys {
      * Handle backorder creation when no CD keys available
      */
     public function handle_backorder_creation($item, $cart_item_key, $values, $order) {
-        // Only the Primary should manage backorders for CD keys
-        if (function_exists('licenceland') && licenceland()->sync && method_exists(licenceland()->sync, 'is_primary_site') && !licenceland()->sync->is_primary_site()) {
-            return;
-        }
         $product_id = $item->get_product_id();
         $qty = $item->get_quantity();
         $keys = get_post_meta($product_id, '_cd_keys', true);
@@ -630,10 +622,6 @@ Best regards,
      * Process backorders when stock is updated
      */
     public function process_backorders_on_stock_update($post_id) {
-        // Backorder processing only on Primary
-        if (function_exists('licenceland') && licenceland()->sync && method_exists(licenceland()->sync, 'is_primary_site') && !licenceland()->sync->is_primary_site()) {
-            return;
-        }
         $keys = get_post_meta($post_id, '_cd_keys', true);
         
         if (empty($keys)) {

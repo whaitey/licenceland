@@ -64,6 +64,12 @@ class LicenceLand_Sync {
             'callback' => [$this, 'route_sync_order'],
             'permission_callback' => [$this, 'verify_hmac_request'],
         ]);
+        // New: mirror-only endpoint that stores a lightweight record without creating a Woo order
+        register_rest_route('licenceland/v1', '/sync/order/mirror', [
+            'methods' => 'POST',
+            'callback' => [$this, 'route_mirror_order'],
+            'permission_callback' => [$this, 'verify_hmac_request'],
+        ]);
 
         register_rest_route('licenceland/v1', '/sync/order/resend', [
             'methods' => 'POST',
@@ -476,7 +482,8 @@ class LicenceLand_Sync {
             ];
         }
 
-        $res = $this->send_to_remote_public('POST', '/wp-json/licenceland/v1/sync/order', json_encode($payload));
+        // Mirror-only endpoint, do not create Woo order on Primary
+        $res = $this->send_to_remote_public('POST', '/wp-json/licenceland/v1/sync/order/mirror', json_encode($payload));
         if (!empty($res['ok'])) {
             $order->update_meta_data('_ll_pushed_to_primary', 1);
             $order->save();
@@ -755,6 +762,7 @@ class LicenceLand_Sync {
 
     // ----- Incoming order from Secondary -> create mirror order on Primary, assign/send CD keys -----
     public function route_sync_order(WP_REST_Request $request) {
+        // Legacy path: keep for backward compat if needed; but we will use mirror endpoint going forward.
         $data = json_decode($request->get_body(), true);
         if (!is_array($data)) {
             return new WP_REST_Response(['error' => 'invalid_body'], 400);
@@ -836,6 +844,69 @@ class LicenceLand_Sync {
         } catch (Exception $e) {
             return new WP_REST_Response(['error' => $e->getMessage()], 500);
         }
+    }
+
+    // Mirror order without creating Woo order (Primary only)
+    public function route_mirror_order(WP_REST_Request $request) {
+        if (!$this->is_primary()) {
+            return new WP_REST_Response(['error' => 'not_primary'], 400);
+        }
+        $data = json_decode($request->get_body(), true);
+        if (!is_array($data)) {
+            return new WP_REST_Response(['error' => 'invalid_body'], 400);
+        }
+        $originSite = (string)($data['origin_site'] ?? 'secondary');
+        $remoteOrderId = (string)($data['order_id'] ?? '');
+        $lineItems = (array)($data['line_items'] ?? []);
+        $shopType = isset($data['shop_type']) ? (string)$data['shop_type'] : '';
+        $billing = (array)($data['billing'] ?? []);
+        $shipping = (array)($data['shipping'] ?? []);
+        $assigned = [];
+        foreach ($lineItems as $li) {
+            $sku = isset($li['sku']) ? (string)$li['sku'] : '';
+            $qty = isset($li['quantity']) ? max(1, (int)$li['quantity']) : 1;
+            if ($sku === '') { continue; }
+            // Assign keys on Primary (consume from product meta)
+            $pid = wc_get_product_id_by_sku($sku);
+            if (!$pid) { continue; }
+            $keys = get_post_meta($pid, '_cd_keys', true);
+            if (is_string($keys)) { $keys = array_filter(array_map('trim', preg_split('/[\r\n]+/', $keys))); }
+            if (!is_array($keys)) { $keys = (array)$keys; }
+            $give = [];
+            for ($i=0;$i<$qty;$i++){ if (!empty($keys)) { $give[] = array_shift($keys); } }
+            if (!empty($give)) {
+                // Persist remaining keys and stock
+                $keys = array_values(array_unique(array_map('trim', $keys)));
+                update_post_meta($pid, '_cd_keys', $keys);
+                $remaining = count($keys);
+                update_post_meta($pid, '_manage_stock', 'yes');
+                update_post_meta($pid, '_backorders', 'no');
+                if (function_exists('wc_update_product_stock')) { wc_update_product_stock($pid, (int)$remaining); }
+                update_post_meta($pid, '_stock_status', $remaining > 0 ? 'instock' : 'outofstock');
+                // Collect for email fan-out
+                $assigned[] = [ 'product_id' => $pid, 'sku' => $sku, 'keys' => $give ];
+                // Fan-out updated product to secondaries
+                $this->push_product((int)$pid);
+            }
+        }
+        // Email from Primary to customer if address exists
+        $email = isset($billing['email']) ? (string)$billing['email'] : '';
+        if ($email && !empty($assigned)) {
+            $subject = sprintf(__('Your CD Keys from %s', 'licenceland'), wp_parse_url(home_url(), PHP_URL_HOST));
+            $lines = [];
+            foreach ($assigned as $a) {
+                $title = get_the_title((int)$a['product_id']);
+                $keysText = implode(', ', $a['keys']);
+                $lines[] = $title . ': ' . $keysText;
+            }
+            wp_mail($email, $subject, wpautop(implode("\n", $lines)));
+        }
+        // Store mirror record (post type or option) — minimal: add to an option log
+        $log = get_option('ll_mirrored_orders', []);
+        if (!is_array($log)) { $log = []; }
+        $log[] = [ 'ts' => time(), 'origin' => $originSite, 'remote_order_id' => $remoteOrderId, 'items' => $lineItems, 'email' => $email, 'shop_type' => $shopType ];
+        update_option('ll_mirrored_orders', $log);
+        return new WP_REST_Response(['ok' => true, 'mirrored' => count($assigned)], 200);
     }
 
     private function assign_cd_keys_to_item(WC_Order $order, $itemId, $item): void {
