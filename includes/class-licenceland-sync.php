@@ -407,8 +407,8 @@ class LicenceLand_Sync {
         if (self::$isSyncRequest) {
             return;
         }
-        // Both roles can mirror orders to the other site for visibility.
-        if (!$this->is_orders_enabled()) {
+        // Only Secondary pushes orders to Primary to assign keys
+        if ($this->is_primary() || !$this->is_orders_enabled()) {
             return;
         }
         $order = wc_get_order(is_numeric($order_id) ? (int)$order_id : $order_id);
