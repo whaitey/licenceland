@@ -994,6 +994,11 @@ class LicenceLand_Sync {
                 $lines[] = $title . ': ' . $keysText;
             }
             wp_mail($email, $subject, wpautop(implode("\n", $lines)));
+            // Also send a single admin notice email with the same keys so keys match
+            $admin = get_option('admin_email');
+            if ($admin) {
+                wp_mail($admin, '[LicenceLand] ' . $subject, wpautop(implode("\n", $lines)));
+            }
         }
         // Store mirror record (post type or option) — minimal: add to an option log
         // Store as CPT entries so it shows in admin list like Woo orders
