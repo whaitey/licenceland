@@ -95,6 +95,16 @@ class LicenceLand_Settings {
             'licenceland-sync-settings',
             [$this, 'sync_settings_page']
         );
+
+        // Orders list (bridge to Core page)
+        add_submenu_page(
+            self::MENU_SLUG,
+            __('Mirrored Orders', 'licenceland'),
+            __('Orders', 'licenceland'),
+            'manage_woocommerce',
+            'licenceland-orders',
+            [$this, 'orders_page_bridge']
+        );
         
         add_submenu_page(
             self::MENU_SLUG,
@@ -104,6 +114,14 @@ class LicenceLand_Settings {
             'licenceland-ip-search',
             [$this, 'ip_search_page']
         );
+    }
+
+    public function orders_page_bridge() {
+        if (function_exists('licenceland') && licenceland()->core && method_exists(licenceland()->core, 'orders_page')) {
+            licenceland()->core->orders_page();
+        } else {
+            echo '<div class="wrap"><h1>LicenceLand Orders</h1><p>Orders page unavailable.</p></div>';
+        }
     }
     
     /**

@@ -413,17 +413,7 @@ class LicenceLand_Core {
         add_action('wp_ajax_licenceland_push_all_products', [$this, 'push_all_products']);
         add_action('admin_notices', [$this, 'sync_push_result_notice']);
 
-        // Add submenu for custom Orders page (always works)
-        add_action('admin_menu', function(){
-            add_submenu_page(
-                LicenceLand_Settings::MENU_SLUG,
-                __('Mirrored Orders', 'licenceland'),
-                __('Orders', 'licenceland'),
-                'manage_woocommerce',
-                'licenceland-orders',
-                [$this, 'orders_page']
-            );
-        });
+        // Submenu added from Settings class. Keep the renderer only.
         // Optional: also add CPT list (advanced)
         add_action('admin_menu', function(){
             add_submenu_page(
