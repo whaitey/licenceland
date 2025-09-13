@@ -241,10 +241,13 @@ class LicenceLand_Settings {
         register_setting(self::OPTION_GROUP, 'll_sync_remote_urls', [
             'type' => 'array',
             'sanitize_callback' => function($v){
-                $raw = is_scalar($v)?(string)$v:'';
+                // If field not present in submission, keep prior value to avoid resets when saving other forms
+                if ($v === null) {
+                    return (array) get_option('ll_sync_remote_urls', []);
+                }
                 // Support textarea POST coming as string
-                if (is_string($raw)) {
-                    $lines = preg_split('/[\r\n]+/', $raw) ?: [];
+                if (is_string($v)) {
+                    $lines = preg_split('/[\r\n]+/', $v) ?: [];
                 } else if (is_array($v)) {
                     $lines = $v;
                 } else {
