@@ -1021,6 +1021,7 @@ class LicenceLand_Sync {
         $billing = (array)($data['billing'] ?? []);
         $shipping = (array)($data['shipping'] ?? []);
         $assigned = [];
+        $queuedAny = false;
         foreach ($lineItems as $li) {
             $sku = isset($li['sku']) ? (string)$li['sku'] : '';
             $qty = isset($li['quantity']) ? max(1, (int)$li['quantity']) : 1;
@@ -1028,41 +1029,50 @@ class LicenceLand_Sync {
             // Assign keys on Primary (consume from product meta)
             $pid = wc_get_product_id_by_sku($sku);
             if (!$pid) { continue; }
-            $keys = get_post_meta($pid, '_cd_keys', true);
-            if (is_string($keys)) { $keys = array_filter(array_map('trim', preg_split('/[\r\n]+/', $keys))); }
-            if (!is_array($keys)) { $keys = (array)$keys; }
+            $keys = $this->get_product_keys((int)$pid);
             $give = [];
-            for ($i=0;$i<$qty;$i++){ if (!empty($keys)) { $give[] = array_shift($keys); } }
+            for ($i = 0; $i < $qty && !empty($keys); $i++) {
+                $give[] = array_shift($keys);
+            }
+            // Persist remaining keys and keep products always orderable
+            $this->set_product_keys((int)$pid, $keys);
+            // Queue backorder for any shortfall
+            $missing = $qty - count($give);
+            if ($missing > 0) {
+                $queuedAny = true;
+                $emailAddr = isset($billing['email']) ? (string)$billing['email'] : '';
+                $this->add_mirror_backorder((int)$pid, (int)$missing, $emailAddr, ['origin' => $originSite, 'remote_order_id' => $remoteOrderId]);
+            }
             if (!empty($give)) {
-                // Persist remaining keys and stock
-                $keys = array_values(array_unique(array_map('trim', $keys)));
-                update_post_meta($pid, '_cd_keys', $keys);
-                $remaining = count($keys);
-                update_post_meta($pid, '_manage_stock', 'yes');
-                update_post_meta($pid, '_backorders', 'no');
-                if (function_exists('wc_update_product_stock')) { wc_update_product_stock($pid, (int)$remaining); }
-                update_post_meta($pid, '_stock_status', $remaining > 0 ? 'instock' : 'outofstock');
                 // Collect for email fan-out
                 $assigned[] = [ 'product_id' => $pid, 'sku' => $sku, 'keys' => $give ];
-                // Fan-out updated product to secondaries
-                $this->push_product((int)$pid);
             }
+            // Fan-out updated product to secondaries regardless so counts reflect
+            $this->push_product((int)$pid);
         }
         // Email from Primary to customer if address exists
         $email = isset($billing['email']) ? (string)$billing['email'] : '';
-        if ($email && !empty($assigned)) {
-            $subject = sprintf(__('Your CD Keys from %s', 'licenceland'), wp_parse_url(home_url(), PHP_URL_HOST));
-            $lines = [];
-            foreach ($assigned as $a) {
-                $title = get_the_title((int)$a['product_id']);
-                $keysText = implode(', ', $a['keys']);
-                $lines[] = $title . ': ' . $keysText;
+        if ($email) {
+            if (!empty($assigned)) {
+                $subject = sprintf(__('Your CD Keys from %s', 'licenceland'), wp_parse_url(home_url(), PHP_URL_HOST));
+                $lines = [];
+                foreach ($assigned as $a) {
+                    $title = get_the_title((int)$a['product_id']);
+                    $keysText = implode(', ', $a['keys']);
+                    $lines[] = $title . ': ' . $keysText;
+                }
+                wp_mail($email, $subject, wpautop(implode("\n", $lines)));
+                // Also send a single admin notice email with the same keys so keys match
+                $admin = get_option('admin_email');
+                if ($admin) {
+                    wp_mail($admin, '[LicenceLand] ' . $subject, wpautop(implode("\n", $lines)));
+                }
             }
-            wp_mail($email, $subject, wpautop(implode("\n", $lines)));
-            // Also send a single admin notice email with the same keys so keys match
-            $admin = get_option('admin_email');
-            if ($admin) {
-                wp_mail($admin, '[LicenceLand] ' . $subject, wpautop(implode("\n", $lines)));
+            if ($queuedAny) {
+                // Send backorder notice for remaining items
+                $subjectBO = sprintf(__('CD Keys Backorder from %s', 'licenceland'), wp_parse_url(home_url(), PHP_URL_HOST));
+                $msgBO = __('We received your order. Your remaining CD key(s) will be delivered within 24 hours as soon as stock is replenished.', 'licenceland');
+                wp_mail($email, $subjectBO, wpautop($msgBO));
             }
         }
         // Store mirror record (post type or option) — minimal: add to an option log
