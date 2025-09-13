@@ -83,6 +83,20 @@ class LicenceLand_Sync {
             'permission_callback' => [$this, 'verify_hmac_request'],
         ]);
 
+        // Orders listing (Secondary): return recent orders summary with items
+        register_rest_route('licenceland/v1', '/sync/orders/list', [
+            'methods' => 'GET',
+            'callback' => [$this, 'route_list_orders'],
+            'permission_callback' => [$this, 'verify_hmac_request'],
+            'args' => [
+                'since' => ['required' => false],
+                'until' => ['required' => false],
+                'sku' => ['required' => false],
+                'page' => ['required' => false],
+                'per_page' => ['required' => false],
+            ],
+        ]);
+
         // CD Keys management (Primary): append/replace via SKU
         register_rest_route('licenceland/v1', '/sync/keys/append', [
             'methods' => 'POST',
@@ -245,6 +259,45 @@ class LicenceLand_Sync {
     private function get_header(string $name): string {
         $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
         return isset($_SERVER[$key]) ? (string) $_SERVER[$key] : '';
+    }
+
+    // Signed request to a specific remote URL
+    public function signed_request(string $remoteUrl, string $method, string $path, array $query = [], string $body = ''): array {
+        $remoteUrl = rtrim($remoteUrl, '/');
+        $secret = (string)$this->get_setting('ll_sync_shared_secret', '');
+        $siteId = (string)$this->get_setting('ll_sync_site_id', home_url());
+        if ($remoteUrl === '' || $secret === '') {
+            return ['ok' => false, 'error' => 'not_configured'];
+        }
+        $qs = '';
+        if (!empty($query)) {
+            $qs = '?' . http_build_query($query);
+        }
+        $ts = (string) time();
+        $payload = strtoupper($method) . "\n" . $path . $qs . "\n" . $ts . "\n" . $body;
+        $sig = base64_encode(hash_hmac('sha256', $payload, $secret, true));
+        $args = [
+            'timeout' => 12,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-LL-Id' => $siteId,
+                'X-LL-Timestamp' => $ts,
+                'X-LL-Signature' => $sig,
+                'X-LL-Sync' => '1',
+            ],
+            'redirection' => 2,
+            'blocking' => true,
+        ];
+        if ($method === 'POST') { $args['body'] = $body; }
+        $url = $remoteUrl . $path . $qs;
+        $response = ($method === 'POST') ? wp_remote_post($url, $args) : wp_remote_request($url, $args + ['method' => $method]);
+        if (is_wp_error($response)) {
+            return ['ok' => false, 'error' => $response->get_error_message()];
+        }
+        $code = wp_remote_retrieve_response_code($response);
+        $bodyStr = wp_remote_retrieve_body($response);
+        $json = json_decode($bodyStr, true);
+        return ($code >= 200 && $code < 300) ? (is_array($json) ? $json + ['ok' => true] : ['ok' => true]) : ['ok' => false, 'error' => $bodyStr ?: 'http_' . $code];
     }
 
     // Routes: product upsert
@@ -742,6 +795,52 @@ class LicenceLand_Sync {
         update_option('ds_lak_payments', $lak);
         update_option('ds_uzl_payments', $uzl);
         return new WP_REST_Response(['ok' => true], 200);
+    }
+
+    // List recent orders on this site (Secondary)
+    public function route_list_orders(WP_REST_Request $request) {
+        $since = $request->get_param('since');
+        $until = $request->get_param('until');
+        $skuFilter = (string)($request->get_param('sku') ?? '');
+        $page = max(1, (int)($request->get_param('page') ?? 1));
+        $per = max(1, min(100, (int)($request->get_param('per_page') ?? 20)));
+        $date_query = [];
+        if ($since) { $date_query['after'] = $since; }
+        if ($until) { $date_query['before'] = $until; }
+        $args = [
+            'type' => 'shop_order',
+            'status' => array_keys(wc_get_order_statuses()),
+            'paginate' => true,
+            'limit' => $per,
+            'page' => $page,
+        ];
+        if (!empty($date_query)) { $args['date_created'] = $date_query; }
+        $orders = wc_get_orders($args);
+        $items = [];
+        foreach ($orders->orders ?? [] as $order) {
+            $lineItems = [];
+            foreach ($order->get_items() as $it) {
+                $p = $it->get_product(); $sku = $p ? (string)$p->get_sku() : '';
+                if ($skuFilter !== '' && stripos($sku, $skuFilter) === false) { continue; }
+                $lineItems[] = [ 'sku' => $sku, 'quantity' => (int)$it->get_quantity() ];
+            }
+            if ($skuFilter !== '' && empty($lineItems)) { continue; }
+            $items[] = [
+                'order_id' => (string)$order->get_id(),
+                'date' => $order->get_date_created() ? $order->get_date_created()->date('Y-m-d H:i') : '',
+                'status' => $order->get_status(),
+                'total' => $order->get_total(),
+                'billing' => [ 'name' => trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()), 'email' => $order->get_billing_email() ],
+                'line_items' => $lineItems,
+                'origin_site' => $this->get_setting('ll_sync_site_id', home_url()),
+            ];
+        }
+        return new WP_REST_Response([
+            'ok' => true,
+            'page' => $page,
+            'per_page' => $per,
+            'orders' => array_values($items),
+        ], 200);
     }
 
     // Admin column: Origin

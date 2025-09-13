@@ -685,7 +685,22 @@ class LicenceLand_Core {
      */
     public function orders_page() {
         if (!current_user_can('manage_woocommerce')) { return; }
-        // Render simple table from stored CPT entries if any, fallback to option log
+        // Filters form
+        $site = isset($_GET['ll_site']) ? sanitize_text_field((string)$_GET['ll_site']) : '';
+        $sku = isset($_GET['ll_sku']) ? sanitize_text_field((string)$_GET['ll_sku']) : '';
+        $since = isset($_GET['ll_since']) ? sanitize_text_field((string)$_GET['ll_since']) : '';
+        $until = isset($_GET['ll_until']) ? sanitize_text_field((string)$_GET['ll_until']) : '';
+        echo '<div class="wrap"><h1>' . esc_html__('Mirrored Orders', 'licenceland') . '</h1>';
+        echo '<form method="get" style="margin:10px 0;">';
+        echo '<input type="hidden" name="page" value="licenceland-orders" />';
+        echo '<input type="text" name="ll_site" placeholder="' . esc_attr__('Site contains...', 'licenceland') . '" value="' . esc_attr($site) . '" /> ';
+        echo '<input type="text" name="ll_sku" placeholder="' . esc_attr__('SKU contains...', 'licenceland') . '" value="' . esc_attr($sku) . '" /> ';
+        echo '<input type="date" name="ll_since" value="' . esc_attr($since) . '" /> ';
+        echo '<input type="date" name="ll_until" value="' . esc_attr($until) . '" /> ';
+        echo '<button class="button">' . esc_html__('Filter', 'licenceland') . '</button>';
+        echo '</form>';
+
+        // Try CPT entries first
         echo '<div class="wrap"><h1>' . esc_html__('Mirrored Orders', 'licenceland') . '</h1>';
         $q = new WP_Query([
             'post_type' => 'licenceland_order_mirror',
@@ -719,7 +734,25 @@ class LicenceLand_Core {
             echo '</tbody></table>';
             wp_reset_postdata();
         } else {
-            $log = get_option('ll_mirrored_orders', []);
+            // Fallback: live fetch from configured remotes using signed GET
+            $log = [];
+            if (function_exists('licenceland') && licenceland()->sync) {
+                $remotes = (array) get_option('ll_sync_remote_urls', []);
+                $path = '/wp-json/licenceland/v1/sync/orders/list';
+                $query = [];
+                if ($sku) { $query['sku'] = $sku; }
+                if ($since) { $query['since'] = $since; }
+                if ($until) { $query['until'] = $until; }
+                foreach ($remotes as $ru) {
+                    $res = licenceland()->sync->signed_request((string)$ru, 'GET', $path, $query, '');
+                    if (!empty($res['ok']) && !empty($res['orders']) && is_array($res['orders'])) {
+                        foreach ($res['orders'] as $o) {
+                            if ($site && stripos((string)($o['origin_site'] ?? ''), $site) === false) { continue; }
+                            $log[] = $o;
+                        }
+                    }
+                }
+            }
             if (!empty($log) && is_array($log)) {
                 echo '<table class="widefat striped"><thead><tr>';
                 echo '<th>' . esc_html__('Date', 'licenceland') . '</th>';
@@ -728,12 +761,12 @@ class LicenceLand_Core {
                 echo '<th>' . esc_html__('Email', 'licenceland') . '</th>';
                 echo '<th>' . esc_html__('Items', 'licenceland') . '</th>';
                 echo '</tr></thead><tbody>';
-                foreach (array_reverse($log) as $entry) {
-                    $when = isset($entry['ts']) ? date('Y-m-d H:i', (int)$entry['ts']) : '';
-                    $origin = isset($entry['origin']) ? (string)$entry['origin'] : '';
-                    $rid = isset($entry['remote_order_id']) ? (string)$entry['remote_order_id'] : '';
-                    $email = isset($entry['email']) ? (string)$entry['email'] : '';
-                    $items = isset($entry['items']) && is_array($entry['items']) ? $entry['items'] : [];
+                foreach ($log as $entry) {
+                    $when = isset($entry['date']) ? (string)$entry['date'] : '';
+                    $origin = isset($entry['origin_site']) ? (string)$entry['origin_site'] : '';
+                    $rid = isset($entry['order_id']) ? (string)$entry['order_id'] : '';
+                    $email = isset($entry['billing']['email']) ? (string)$entry['billing']['email'] : '';
+                    $items = isset($entry['line_items']) && is_array($entry['line_items']) ? $entry['line_items'] : [];
                     $itemsText = [];
                     foreach ($items as $li) { $itemsText[] = (isset($li['sku'])?$li['sku']:'') . ' × ' . (isset($li['quantity'])?(int)$li['quantity']:1); }
                     echo '<tr>';
