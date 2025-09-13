@@ -337,17 +337,24 @@ class LicenceLand_Settings {
                             <th style="width:28px;"><input type="checkbox" id="ll-select-all" /></th>
                             <th><?php _e('Product', 'licenceland'); ?></th>
                             <th><?php _e('SKU', 'licenceland'); ?></th>
+                            <th><?php _e('Keys', 'licenceland'); ?></th>
                             <th><?php _e('ID', 'licenceland'); ?></th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php if (empty($ids)) : ?>
                         <tr><td colspan="4"><?php _e('No products found.', 'licenceland'); ?></td></tr>
-                    <?php else : foreach ($ids as $pid) : $skuVal = get_post_meta($pid, '_sku', true); ?>
+                    <?php else : foreach ($ids as $pid) : $skuVal = get_post_meta($pid, '_sku', true); $keysMeta = get_post_meta($pid, '_cd_keys', true); if (is_string($keysMeta)) { $keysMeta = array_filter(array_map('trim', preg_split('/[\r\n]+/',$keysMeta))); } $keysArr = is_array($keysMeta)?array_values($keysMeta):[]; $keysCount = count($keysArr); $keysPreview = $keysCount>0?implode(', ', array_slice($keysArr,0,3)):''; ?>
                         <tr>
                             <td><input type="checkbox" name="product_ids[]" value="<?php echo esc_attr($pid); ?>" /></td>
                             <td><a href="<?php echo esc_url(get_edit_post_link($pid)); ?>" target="_blank"><?php echo esc_html(get_the_title($pid)); ?></a></td>
                             <td><code><?php echo esc_html($skuVal ?: '-'); ?></code></td>
+                            <td>
+                                <span><?php echo (int)$keysCount; ?> <?php _e('keys', 'licenceland'); ?></span>
+                                <?php if ($keysCount>0): ?>
+                                    <a href="#" class="ll-view-keys" data-keys="<?php echo esc_attr(implode("\n", $keysArr)); ?>" style="margin-left:8px;"><?php _e('View', 'licenceland'); ?></a>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo (int) $pid; ?></td>
                         </tr>
                     <?php endforeach; endif; ?>
@@ -383,6 +390,25 @@ class LicenceLand_Settings {
         jQuery(function($){
             $('#ll-select-all').on('change', function(){
                 $('input[name="product_ids[]"]').prop('checked', $(this).is(':checked'));
+            });
+            // Prefill keys textarea when exactly 1 product is selected
+            var nonceGet = '<?php echo wp_create_nonce('licenceland_nonce'); ?>';
+            function loadKeysForSelected(){
+                var checked = $('input[name="product_ids[]"]:checked');
+                if (checked.length === 1) {
+                    var pid = checked.val();
+                    $.post(ajaxurl, { action: 'licenceland_get_cd_keys', nonce: nonceGet, product_id: pid })
+                        .done(function(resp){ if (resp && resp.success && Array.isArray(resp.data)) { $('#keys').val(resp.data.join('\n')); } });
+                }
+            }
+            $(document).on('change', 'input[name="product_ids[]"]', loadKeysForSelected);
+            // Inline view of keys from table link
+            $(document).on('click', '.ll-view-keys', function(e){
+                e.preventDefault();
+                var keys = $(this).data('keys') || '';
+                var pre = $('#ll-keys-preview');
+                if (!pre.length) { pre = $('<pre id="ll-keys-preview" style="background:#f7f7f7; padding:8px; white-space:pre-wrap; border:1px solid #ddd; margin-top:10px;"></pre>').insertAfter('table.widefat.striped'); }
+                pre.text(keys);
             });
         });
         </script>
