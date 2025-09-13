@@ -19,6 +19,7 @@ class LicenceLand_Core {
         add_action('wp_enqueue_scripts', [$this, 'frontend_scripts']);
         add_action('admin_notices', [$this, 'admin_notices']);
         add_filter('plugin_action_links_' . LICENCELAND_PLUGIN_BASENAME, [$this, 'plugin_action_links']);
+        add_action('init', [$this, 'register_cpt']);
         
         // Handle payment-based order creation
         $this->handle_payment_based_order_creation();
@@ -411,19 +412,16 @@ class LicenceLand_Core {
         add_action('wp_ajax_licenceland_push_all_products', [$this, 'push_all_products']);
         add_action('admin_notices', [$this, 'sync_push_result_notice']);
 
-        // Admin page for mirrored orders
+        // Add submenu pointing to CPT list
         add_action('admin_menu', function(){
             add_submenu_page(
                 LicenceLand_Settings::MENU_SLUG,
                 __('Mirrored Orders', 'licenceland'),
                 __('Orders', 'licenceland'),
                 'manage_woocommerce',
-                'licenceland-orders',
-                [$this, 'orders_page']
+                'edit.php?post_type=licenceland_order_mirror'
             );
         });
-        // Fallback redirect if a direct /wp-admin/licenceland-orders URL is hit
-        add_action('admin_init', [$this, 'redirect_orders_slug']);
         
         // Add admin notice for update checker status
         add_action('admin_notices', [$this, 'update_checker_notice']);
@@ -684,51 +682,25 @@ class LicenceLand_Core {
      * Orders page (mirror view)
      */
     public function orders_page() {
+        // Deprecated: listing now handled by CPT list table
         if (!current_user_can('manage_woocommerce')) { return; }
-        $log = get_option('ll_mirrored_orders', []);
-        if (!is_array($log)) { $log = []; }
-        echo '<div class="wrap"><h1>' . esc_html__('Mirrored Orders', 'licenceland') . '</h1>';
-        if (empty($log)) {
-            echo '<p>' . esc_html__('No mirrored orders yet.', 'licenceland') . '</p>';
-        } else {
-            echo '<table class="widefat striped"><thead><tr>';
-            echo '<th>' . esc_html__('Date', 'licenceland') . '</th>';
-            echo '<th>' . esc_html__('Origin Site', 'licenceland') . '</th>';
-            echo '<th>' . esc_html__('Remote Order ID', 'licenceland') . '</th>';
-            echo '<th>' . esc_html__('Email', 'licenceland') . '</th>';
-            echo '<th>' . esc_html__('Items', 'licenceland') . '</th>';
-            echo '</tr></thead><tbody>';
-            foreach (array_reverse($log) as $entry) {
-                $when = isset($entry['ts']) ? date('Y-m-d H:i', (int)$entry['ts']) : '';
-                $origin = isset($entry['origin']) ? (string)$entry['origin'] : '';
-                $rid = isset($entry['remote_order_id']) ? (string)$entry['remote_order_id'] : '';
-                $email = isset($entry['email']) ? (string)$entry['email'] : '';
-                $items = isset($entry['items']) && is_array($entry['items']) ? $entry['items'] : [];
-                $itemsText = [];
-                foreach ($items as $li) {
-                    $itemsText[] = (isset($li['sku'])?$li['sku']:'') . ' × ' . (isset($li['quantity'])?(int)$li['quantity']:1);
-                }
-                echo '<tr>';
-                echo '<td>' . esc_html($when) . '</td>';
-                echo '<td>' . esc_html($origin) . '</td>';
-                echo '<td>' . esc_html($rid) . '</td>';
-                echo '<td>' . esc_html($email) . '</td>';
-                echo '<td>' . esc_html(implode(', ', $itemsText)) . '</td>';
-                echo '</tr>';
-            }
-            echo '</tbody></table>';
-        }
-        echo '</div>';
+        wp_safe_redirect(admin_url('edit.php?post_type=licenceland_order_mirror'));
+        exit;
     }
 
-    public function redirect_orders_slug() {
-        if (!is_admin()) { return; }
-        if (!current_user_can('manage_woocommerce')) { return; }
-        $req = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
-        if ($req && strpos($req, '/wp-admin/licenceland-orders') !== false) {
-            $url = admin_url('admin.php?page=licenceland-orders');
-            wp_safe_redirect($url);
-            exit;
-        }
+    public function register_cpt() {
+        // Custom post type for mirrored orders
+        register_post_type('licenceland_order_mirror', [
+            'labels' => [
+                'name' => __('Orders', 'licenceland'),
+                'singular_name' => __('Order', 'licenceland'),
+            ],
+            'public' => false,
+            'show_ui' => true,
+            'show_in_menu' => false,
+            'capability_type' => 'shop_order',
+            'map_meta_cap' => true,
+            'supports' => ['title','custom-fields'],
+        ]);
     }
 }

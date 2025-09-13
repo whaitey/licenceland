@@ -902,10 +902,19 @@ class LicenceLand_Sync {
             wp_mail($email, $subject, wpautop(implode("\n", $lines)));
         }
         // Store mirror record (post type or option) — minimal: add to an option log
-        $log = get_option('ll_mirrored_orders', []);
-        if (!is_array($log)) { $log = []; }
-        $log[] = [ 'ts' => time(), 'origin' => $originSite, 'remote_order_id' => $remoteOrderId, 'items' => $lineItems, 'email' => $email, 'shop_type' => $shopType ];
-        update_option('ll_mirrored_orders', $log);
+        // Store as CPT entries so it shows in admin list like Woo orders
+        $post_id = wp_insert_post([
+            'post_type' => 'licenceland_order_mirror',
+            'post_status' => 'publish',
+            'post_title' => sprintf('%s #%s', $originSite, $remoteOrderId ?: time()),
+        ], true);
+        if (!is_wp_error($post_id) && $post_id) {
+            update_post_meta($post_id, '_ll_origin_site', $originSite);
+            update_post_meta($post_id, '_ll_remote_order_id', $remoteOrderId);
+            update_post_meta($post_id, '_ll_email', $email);
+            update_post_meta($post_id, '_ll_shop_type', $shopType);
+            update_post_meta($post_id, '_ll_items', $lineItems);
+        }
         return new WP_REST_Response(['ok' => true, 'mirrored' => count($assigned)], 200);
     }
 
