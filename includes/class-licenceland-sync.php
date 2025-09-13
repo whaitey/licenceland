@@ -146,6 +146,8 @@ class LicenceLand_Sync {
         $existing = $this->normalize_keys_array($existing);
         $merged = array_values(array_unique(array_merge($existing, $keys)));
         update_post_meta($product_id, '_cd_keys', $merged);
+        // Fan-out from Primary by pushing full product payload
+        $this->push_product((int)$product_id);
         return new WP_REST_Response(['ok' => true, 'added' => count($keys), 'total' => count($merged)], 200);
     }
 
@@ -165,6 +167,8 @@ class LicenceLand_Sync {
             return new WP_REST_Response(['error' => 'product_not_found'], 404);
         }
         update_post_meta($product_id, '_cd_keys', $keys);
+        // Fan-out from Primary by pushing full product payload
+        $this->push_product((int)$product_id);
         return new WP_REST_Response(['ok' => true, 'total' => count($keys)], 200);
     }
 

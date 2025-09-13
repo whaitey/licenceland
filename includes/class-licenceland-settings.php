@@ -249,10 +249,12 @@ class LicenceLand_Settings {
         $skus = isset($_POST['skus']) ? sanitize_text_field((string) $_POST['skus']) : '';
         $keys = isset($_POST['keys']) ? (string) $_POST['keys'] : '';
         $mode = isset($_POST['mode']) ? sanitize_text_field((string) $_POST['mode']) : 'append';
+        $ran = false;
         $result = '';
         if (!empty($_POST['ll_keys_nonce']) && wp_verify_nonce($_POST['ll_keys_nonce'], 'll_keys_manage')) {
-            // Local apply for Primary; Secondaries are expected to proxy to Primary via Sync (handled elsewhere in UI/scripts)
-            if ($skus !== '') {
+            $ran = true;
+            $isPrimary = function_exists('licenceland') && licenceland()->sync && licenceland()->sync->is_primary();
+            if ($skus !== '' && $isPrimary) {
                 $skuList = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,\s]+/', $skus)))));
                 $keysList = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\r\n]+/', $keys)))));
                 $totalAffected = 0; $totalKeys = 0;
@@ -272,13 +274,19 @@ class LicenceLand_Settings {
                     }
                     $totalAffected++;
                 }
-                $result = sprintf(__('Updated %d products. Keys now set/merged.', 'licenceland'), $totalAffected);
+                $result = sprintf(__('Updated %d products on Primary. Keys now set/merged.', 'licenceland'), $totalAffected);
+            } elseif ($skus !== '' && function_exists('licenceland') && licenceland()->sync) {
+                // Secondary: proxy to Primary via Sync API
+                $path = ($mode === 'replace') ? '/wp-json/licenceland/v1/sync/keys/replace' : '/wp-json/licenceland/v1/sync/keys/append';
+                $payload = json_encode(['sku' => trim((string)$skus), 'keys' => preg_split('/[\r\n]+/', (string)$keys)]);
+                $res = licenceland()->sync->send_to_remote_public('POST', $path, (string)$payload);
+                $result = !empty($res['ok']) ? __('Pushed key update to Primary successfully.', 'licenceland') : sprintf(__('Push failed: %s', 'licenceland'), (string)($res['error'] ?? 'unknown'));
             }
         }
         ?>
         <div class="wrap">
             <h1><?php _e('CD Keys Manager', 'licenceland'); ?></h1>
-            <?php if ($result) : ?>
+            <?php if ($ran) : ?>
                 <div class="notice notice-success"><p><?php echo esc_html($result); ?></p></div>
             <?php endif; ?>
             <form method="post">
