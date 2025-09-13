@@ -288,6 +288,9 @@ class LicenceLand_Sync {
         if (isset($data['sale_price'])) {
             update_post_meta($product_id, '_sale_price', wc_format_decimal((string)$data['sale_price']));
         }
+        if (isset($data['business_price'])) {
+            update_post_meta($product_id, '_ds_business_price', wc_format_decimal((string)$data['business_price']));
+        }
         $price = isset($data['sale_price']) && $data['sale_price'] !== '' ? (string)$data['sale_price'] : (string)($data['regular_price'] ?? '');
         if ($price !== '') {
             update_post_meta($product_id, '_price', wc_format_decimal($price));
@@ -519,6 +522,7 @@ class LicenceLand_Sync {
             'short_description' => (string)get_post_field('post_excerpt', $product_id),
             'regular_price' => $product->get_regular_price(),
             'sale_price' => $product->get_sale_price(),
+            'business_price' => (string) get_post_meta($product_id, '_ds_business_price', true),
             // Expose stock as remaining CD keys if available; fallback to Woo stock
             'stock_quantity' => ($cdKeysCount > 0) ? $cdKeysCount : $product->get_stock_quantity(),
             // CD Keys config
