@@ -422,6 +422,8 @@ class LicenceLand_Core {
                 [$this, 'orders_page']
             );
         });
+        // Fallback redirect if a direct /wp-admin/licenceland-orders URL is hit
+        add_action('admin_init', [$this, 'redirect_orders_slug']);
         
         // Add admin notice for update checker status
         add_action('admin_notices', [$this, 'update_checker_notice']);
@@ -717,5 +719,16 @@ class LicenceLand_Core {
             echo '</tbody></table>';
         }
         echo '</div>';
+    }
+
+    public function redirect_orders_slug() {
+        if (!is_admin()) { return; }
+        if (!current_user_can('manage_woocommerce')) { return; }
+        $req = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+        if ($req && strpos($req, '/wp-admin/licenceland-orders') !== false) {
+            $url = admin_url('admin.php?page=licenceland-orders');
+            wp_safe_redirect($url);
+            exit;
+        }
     }
 }
