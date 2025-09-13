@@ -19,7 +19,7 @@ class LicenceLand_Core {
         add_action('wp_enqueue_scripts', [$this, 'frontend_scripts']);
         add_action('admin_notices', [$this, 'admin_notices']);
         add_filter('plugin_action_links_' . LICENCELAND_PLUGIN_BASENAME, [$this, 'plugin_action_links']);
-        add_action('init', [$this, 'register_cpt']);
+        add_action('init', [$this, 'register_cpt'], 0);
         
         // Handle payment-based order creation
         $this->handle_payment_based_order_creation();
@@ -422,6 +422,8 @@ class LicenceLand_Core {
                 'edit.php?post_type=licenceland_order_mirror'
             );
         });
+        // Redirect friendly slug
+        add_action('admin_init', [$this, 'redirect_orders_friendly']);
         
         // Add admin notice for update checker status
         add_action('admin_notices', [$this, 'update_checker_notice']);
@@ -698,9 +700,19 @@ class LicenceLand_Core {
             'public' => false,
             'show_ui' => true,
             'show_in_menu' => false,
-            'capability_type' => 'shop_order',
-            'map_meta_cap' => true,
+            'capability_type' => 'post',
+            'map_meta_cap' => false,
             'supports' => ['title','custom-fields'],
         ]);
+    }
+
+    public function redirect_orders_friendly() {
+        if (!is_admin()) { return; }
+        if (!current_user_can('manage_woocommerce')) { return; }
+        $req = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+        if ($req && strpos($req, '/wp-admin/licenceland-orders') !== false) {
+            wp_safe_redirect(admin_url('edit.php?post_type=licenceland_order_mirror'));
+            exit;
+        }
     }
 }
